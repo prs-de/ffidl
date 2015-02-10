@@ -678,7 +678,8 @@ struct ffidl_callout {
  */
 struct ffidl_closure {
 #if USE_LIBFFI
-   ffi_closure lib_closure;
+   ffi_closure *lib_closure;	/* Points to the writtable part of the closure. */
+   void *executable;		/* Points to the executable address of the closure. */
 #endif
 #if USE_FFCALL
    __TR_function lib_closure;
@@ -1989,6 +1990,9 @@ static void client_delete(ClientData clientData, Tcl_Interp *interp)
     ffidl_callback *callback = Tcl_GetHashValue(entry);
     cif_dec_ref(callback->cif);
     Tcl_DecrRefCount(callback->proc);
+#if USE_LIBFFI
+    ffi_closure_free(callback->closure.lib_closure);
+#endif
 #if USE_FFCALL
     free_callback(callback->closure.lib_closure);
 #endif
@@ -2536,7 +2540,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
       }
       closure = &(callback->closure);
 #if USE_LIBFFI
-      *(void **)cif->args[i] = (void *)&closure->lib_closure;
+      *(void **)cif->args[i] = (void *)closure->executable;
 #endif
 #if USE_FFCALL
       *(void **)cif->args[i] = (void *)closure->lib_closure;
@@ -2726,19 +2730,20 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
   closure->interp = interp;
   closure->callback = callback;
 #if USE_LIBFFI
+  closure->lib_closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->executable));
 #if FFI_NATIVE_RAW_API
   if (cif->use_raw_api) {
-    if (ffi_prep_raw_closure((ffi_raw_closure *)&closure->lib_closure, &callback->cif->lib_cif,
-                             (void (*)(ffi_cif*,void*,ffi_raw*,void*))callback_callback,
-                             (void *)closure) != FFI_OK) {
+    if (ffi_prep_raw_closure_loc((ffi_raw_closure *)closure->lib_closure, &callback->cif->lib_cif,
+                                 (void (*)(ffi_cif*,void*,ffi_raw*,void*))callback_callback,
+                                 (void *)closure, closure->executable) != FFI_OK) {
       Tcl_AppendResult(interp, "libffi can't make raw closure for: ", name, NULL);
       return TCL_ERROR;
     }
   } else
 #endif
-    if (ffi_prep_closure(&closure->lib_closure, &callback->cif->lib_cif,
-                         (void (*)(ffi_cif*,void*,void**,void*))callback_callback,
-                         (void *)closure) != FFI_OK) {
+    if (ffi_prep_closure_loc(closure->lib_closure, &callback->cif->lib_cif,
+                            (void (*)(ffi_cif*,void*,void**,void*))callback_callback,
+                            (void *)closure, closure->executable) != FFI_OK) {
       Tcl_AppendResult(interp, "libffi can't make closure for: ", name, NULL);
       return TCL_ERROR;
     }
