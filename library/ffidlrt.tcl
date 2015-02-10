@@ -3,7 +3,7 @@
 #
 # Run time support for Ffidl.
 #
-package provide Ffidlrt 0.1
+package provide Ffidlrt 0.2
 package require Ffidl
 
 namespace eval ::ffidl:: {}
@@ -71,10 +71,23 @@ namespace eval ::ffidl:: {
                             }                        
                         } else {
                             array set libs {
-                                c /lib64/libc.so.6
-                                m /lib64/libm.so.6
-                                gdbm /usr/lib64/libgdbm.so
-                                gmp {/usr/local/lib64/libgmp.so /usr/lib64/libgmp.so.2}
+                                c {
+				    /lib64/libc.so.6
+				    /lib/x86_64-linux-gnu/libc.so.6
+				}
+                                m {
+				    /lib64/libm.so.6
+				    /lib/x86_64-linux-gnu/libm.so.6
+				}
+                                gdbm {
+				    /usr/lib64/libgdbm.so
+				    /usr/lib/x86_64-linux-gnu/libgdbm.so
+				}
+                                gmp {
+				    /usr/lib/x86_64-linux-gnu/libgmp.so
+				    /usr/local/lib64/libgmp.so
+				    /usr/lib64/libgmp.so.2
+				}
                                 mathswig libmathswig0.5.so
                             }
                             array set types {
