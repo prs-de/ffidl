@@ -1,4 +1,4 @@
-/* ffidlConfig.h.in.  Generated from configure.in by autoheader.  */
+/* ffidlConfig.h.in.  Generated from configure.ac by autoheader.  */
 
 /* Define if building universal (internal helper macro) */
 #undef AC_APPLE_UNIVERSAL_BUILD
@@ -36,6 +36,15 @@
 /* Canonical host name */
 #undef CANONICAL_HOST
 
+/* Defined when cygwin/mingw does not support EXCEPTION DISPOSITION */
+#undef EXCEPTION_DISPOSITION
+
+/* Defined when compiler supports casting to union type. */
+#undef HAVE_CAST_TO_UNION
+
+/* Compiler support for module scope symbols */
+#undef HAVE_HIDDEN
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
@@ -53,17 +62,20 @@
 /* Define to 1 if the system has the type `long long'. */
 #undef HAVE_LONG_LONG
 
+/* Define to 1 if you have the `lseek64' function. */
+#undef HAVE_LSEEK64
+
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
 /* Do we have <net/errno.h>? */
 #undef HAVE_NET_ERRNO_H
 
-/* Define to 1 if you have the `pthread_attr_setstacksize' function. */
-#undef HAVE_PTHREAD_ATTR_SETSTACKSIZE
+/* Defined when mingw does not support SEH */
+#undef HAVE_NO_SEH
 
-/* Define to 1 if you have the `readdir_r' function. */
-#undef HAVE_READDIR_R
+/* Define to 1 if you have the `open64' function. */
+#undef HAVE_OPEN64
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
@@ -98,8 +110,14 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
+/* Defined when cygwin/mingw ignores VOID define in winnt.h */
+#undef HAVE_WINNT_IGNORE_VOID
+
 /* ffidl::stubsymbol can lookup in Tk stubs tables */
 #undef LOOKUP_TK_STUBS
+
+/* No Compiler support for module scope symbols */
+#undef MODULE_SCOPE
 
 /* Do we have <dirent.h>? */
 #undef NO_DIRENT_H
@@ -139,6 +157,9 @@
 
 /* Define to the one symbol short name of this package. */
 #undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
@@ -191,26 +212,14 @@
 /* UNDER_CE version */
 #undef UNDER_CE
 
-/* Should we use <a.out.h> when doing dynamic loading? */
-#undef USE_A_OUT_H
-
 /* Implement callbacks */
 #undef USE_CALLBACKS
-
-/* Do we need a special AIX hack for timezones? */
-#undef USE_DELTA_FOR_TZ
 
 /* Use ffcall for foreign function calls */
 #undef USE_FFCALL
 
 /* Use libffi for foreign function calls */
 #undef USE_LIBFFI
-
-/* Should we use <sys/exec_aout.h> when doing dynamic loading? */
-#undef USE_SYS_EXEC_AOUT_H
-
-/* Should we use <sys/exec.h> when doing dynamic loading? */
-#undef USE_SYS_EXEC_H
 
 /* Use Tcl*Dlopen() API to load code */
 #undef USE_TCL_DLOPEN
@@ -241,6 +250,9 @@
 
 /* Add the _LARGEFILE64_SOURCE flag when building */
 #undef _LARGEFILE64_SOURCE
+
+/* Add the _LARGEFILE_SOURCE64 flag when building */
+#undef _LARGEFILE_SOURCE64
 
 /* # needed in sys/socket.h Should OS/390 do the right thing with sockets? */
 #undef _OE_SOCKETS
