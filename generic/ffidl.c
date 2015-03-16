@@ -46,6 +46,16 @@
  * These changes are under BSD License and are
  * Copyright (c) 2005, Daniel A. Steffen <das@users.sourceforge.net>
  *
+ * Changes since ffidl 0.6:
+ *  - Build support for Tcl 8.6. (by pooryorick)
+ *
+ * Changes since ffidl 0.6:
+ *  - Updates for API changes in 2015 version of libffi.
+ *  - Fixes for Tcl_WideInt.
+ *  - Update build system to TEA 3.9.
+ * These changes are under BSD License and are
+ * Copyright (c) 2015, Patzschke + Rasp Software GmbH, Wiesbaden
+ * Author: Adrián Medraño Calvo <amcalvo@prs.de>
  */
 
 #include <tcl.h>

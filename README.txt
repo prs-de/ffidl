@@ -1,10 +1,13 @@
 ------------------------------------------------------------------------
-                         Ffidl Version 0.6
+                         Ffidl Version 0.7
     Copyright (c) 1999 by Roger E Critchlow Jr, Santa Fe, NM, USA
                            rec@elf.org
 
 Changes since ffidl 0.5 are under BSD License and are
     Copyright (c) 2005, Daniel A. Steffen <das@users.sourceforge.net>
+
+Changes since ffidl 0.6 are under BSD License and are
+    Copyright (c) 2015, Patzschke + Rasp Software GmbH, Wiesbaden
 
 ------------------------------------------------------------------------
 
