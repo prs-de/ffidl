@@ -2566,7 +2566,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
   }
   /* prepare for structure return */
   if (cif->rtype->typecode == FFIDL_STRUCT) {
-    obj = Tcl_NewByteArrayObj("", cif->rtype->size);
+    obj = Tcl_NewByteArrayObj(NULL, cif->rtype->size);
     Tcl_IncrRefCount(obj);
     cif->ret = Tcl_GetByteArrayFromObj(obj, &itmp);
   }
