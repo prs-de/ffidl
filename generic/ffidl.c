@@ -1152,12 +1152,12 @@ static int cif_prep(ffidl_cif *cif, int protocol)
 #if USE_LIBFFI
   ffi_type *rtype;
   int i;
-  cif->use_raw_api = 0;
   rtype = cif->rtype->lib_type;
 #if FFI_NATIVE_RAW_API
-  cif->use_raw_api = 1;
-  if (cif->rtype->typecode == FFIDL_STRUCT)
-    cif->use_raw_api = 0;
+  /* no raw API for structs */
+  cif->use_raw_api = cif->rtype->typecode != FFIDL_STRUCT;
+#else
+  cif->use_raw_api = 0;
 #endif
   for (i = 0; i < cif->argc; i += 1) {
     cif->lib_atypes[i] = cif->atypes[i]->lib_type;
