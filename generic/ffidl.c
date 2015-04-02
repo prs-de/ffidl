@@ -2332,59 +2332,60 @@ static int tcl_ffidl_typedef(ClientData clientData, Tcl_Interp *interp, int objc
     Tcl_AppendResult(interp, "type is already defined: ", tname1, NULL);
     return TCL_ERROR;
   }
-  /* define tname1 as an alias for tname2 */
-  if (objc == 3) {
+  nelts = objc - 2;
+  if (nelts == 1) {
+    /* define tname1 as an alias for tname2 */
     tname2 = Tcl_GetString(objv[2]);
     ttype2 = type_lookup(client, tname2);
     if (ttype2 == NULL) {
       Tcl_AppendResult(interp, "undefined type: ", tname2, NULL);
       return TCL_ERROR;
     }
+    /* define alias */
     type_define(client, tname1, ttype2);
-    return TCL_OK;
-  }
-  /* allocate an aggregate type */
-  nelts = objc-2;
-  newtype = type_alloc(client, nelts);
-  if (newtype == NULL) {
-    Tcl_AppendResult(interp, "couldn't allocate the ffi_type", NULL); 
-    return TCL_ERROR;
-  }
-  /* parse aggregate types */
-  newtype->size = 0;
-  newtype->alignment = 0;
-  for (i = 0; i < nelts; i += 1) {
-    tname2 = Tcl_GetString(objv[2+i]);
-    ttype2 = type_lookup(client, tname2);
-    if (ttype2 == NULL) {
-      type_free(newtype);
-      Tcl_AppendResult(interp, "undefined element type: ", tname2, NULL);
+  } else {
+    /* allocate an aggregate type */
+    newtype = type_alloc(client, nelts);
+    if (newtype == NULL) {
+      Tcl_AppendResult(interp, "couldn't allocate the ffi_type", NULL);
       return TCL_ERROR;
     }
-    if ((ttype2->class & FFIDL_ELT) == 0) {
+    /* parse aggregate types */
+    newtype->size = 0;
+    newtype->alignment = 0;
+    for (i = 0; i < nelts; i += 1) {
+      tname2 = Tcl_GetString(objv[2+i]);
+      ttype2 = type_lookup(client, tname2);
+      if (ttype2 == NULL) {
+	type_free(newtype);
+	Tcl_AppendResult(interp, "undefined element type: ", tname2, NULL);
+	return TCL_ERROR;
+      }
+      if ((ttype2->class & FFIDL_ELT) == 0) {
+	type_free(newtype);
+	Tcl_AppendResult(interp, "type ", tname2, " is not permitted in element context", NULL);
+	return TCL_ERROR;
+      }
+      newtype->elements[i] = ttype2;
+      /* accumulate the aggregate size and alignment */
+      /* align current size to element's alignment */
+      if ((ttype2->alignment-1) & newtype->size)
+	newtype->size = ((newtype->size-1) | (ttype2->alignment-1)) + 1;
+      /* add the element's size */
+      newtype->size += ttype2->size;
+      /* bump the aggregate alignment as required */
+      if (ttype2->alignment > newtype->alignment)
+	newtype->alignment = ttype2->alignment;
+    }
+    newtype->size = ((newtype->size-1) | (newtype->alignment-1)) + 1; /* tail padding as in libffi */
+    if (type_prep(newtype) != TCL_OK) {
       type_free(newtype);
-      Tcl_AppendResult(interp, "type ", tname2, " is not permitted in element context", NULL);
+      Tcl_AppendResult(interp, "type definition error", NULL);
       return TCL_ERROR;
     }
-    newtype->elements[i] = ttype2;
-    /* accumulate the aggregate size and alignment */
-    /* align current size to element's alignment */
-    if ((ttype2->alignment-1) & newtype->size)
-      newtype->size = ((newtype->size-1) | (ttype2->alignment-1)) + 1;
-    /* add the element's size */
-    newtype->size += ttype2->size;
-    /* bump the aggregate alignment as required */
-    if (ttype2->alignment > newtype->alignment)
-      newtype->alignment = ttype2->alignment;
+    /* define new type */
+    type_define(client, tname1, newtype);
   }
-  newtype->size = ((newtype->size-1) | (newtype->alignment-1)) + 1; /* tail padding as in libffi */
-  if (type_prep(newtype) != TCL_OK) {
-    type_free(newtype);
-    Tcl_AppendResult(interp, "type definition error", NULL);
-    return TCL_ERROR;
-  }
-  /* define new type */
-  type_define(client, tname1, newtype);
   /* return success */
   return TCL_OK;
 }
