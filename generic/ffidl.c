@@ -822,55 +822,75 @@ static Tcl_HashEntry *type_find(ffidl_client *client, ffidl_type *type)
   return entry_find(&client->types,(void *)type);
 }
 */
-/* parse an argument or return type specification */
-static int type_parse(Tcl_Interp *interp, ffidl_client *client, unsigned context, Tcl_Obj *obj,
-		      ffidl_type **type1, ffidl_value *type2, void **argp)
+
+/**
+ * Parse an argument or return type specification.
+ *
+ * After invoking this function, @p type points to the @c ffidl_type
+ * corresponding to @p typename, and @p argp is initialized
+ *
+ * @param[in] interp Tcl interpreter.
+ * @param[in] client Ffidle data.
+ * @param[in] context Context where the type has been found.
+ * @param[in] typename Tcl_Obj whose string representation is a type name.
+ * @param[out] typePtr Points to the place to store the pointer to the parsed @c
+ *     ffidl_type.
+ * @param[in] valueArea Points to the area where values @p argp values should be
+ *     stored.
+ * @param[out] valuePtr Points to the place to store the address within @p valueArea
+ *     where the arguments are to be retrieved or the return value shall be
+ *     placed upon callout.
+ * @return TCL_OK if successful, TCL_ERROR otherwise.
+ */
+static int type_parse(Tcl_Interp *interp, ffidl_client *client,
+		      unsigned context, Tcl_Obj *typename,
+		      ffidl_type **typePtr, ffidl_value *valueArea, void **valuePtr)
 {
-  char *arg = Tcl_GetString(obj);
+  char *arg = Tcl_GetString(typename);
   char buff[128];
 
   /* lookup the type */
-  *type1 = type_lookup(client, arg);
-  if (*type1 == NULL) {
+  *typePtr = type_lookup(client, arg);
+  if (*typePtr == NULL) {
     Tcl_AppendResult(interp, "no type defined for: ", arg, NULL);
     return TCL_ERROR;
   }
   /* test the context */
-  if ((context & (*type1)->class) == 0) {
+  if ((context & (*typePtr)->class) == 0) {
     Tcl_AppendResult(interp, "type ", arg, " is not permitted in ",
 		     (context&FFIDL_ARG) ? "argument" :  "return",
 		     " context.", NULL);
     return TCL_ERROR;
   }
   /* set arg value pointer */
-  switch ((*type1)->typecode) {
-  case FFIDL_VOID:		*argp = NULL; break; /* libffi depends on this being NULL on some platforms ! */
-  case FFIDL_INT:		*argp = (void *)&type2->v_int; break;
-  case FFIDL_FLOAT:		*argp = (void *)&type2->v_float; break;
-  case FFIDL_DOUBLE:		*argp = (void *)&type2->v_double; break;
+  switch ((*typePtr)->typecode) {
+  case FFIDL_VOID:		*valuePtr = NULL; break; /* libffi depends on this being NULL on some platforms ! */
+  case FFIDL_INT:		*valuePtr = (void *)&valueArea->v_int; break;
+  case FFIDL_FLOAT:		*valuePtr = (void *)&valueArea->v_float; break;
+  case FFIDL_DOUBLE:		*valuePtr = (void *)&valueArea->v_double; break;
 #if HAVE_LONG_DOUBLE
-  case FFIDL_LONGDOUBLE:	*argp = (void *)&type2->v_longdouble; break;
+  case FFIDL_LONGDOUBLE:	*valuePtr = (void *)&valueArea->v_longdouble; break;
 #endif
-  case FFIDL_UINT8:		*argp = (void *)&type2->v_uint8; break;
-  case FFIDL_SINT8:		*argp = (void *)&type2->v_sint8; break;
-  case FFIDL_UINT16:		*argp = (void *)&type2->v_uint16; break;
-  case FFIDL_SINT16:		*argp = (void *)&type2->v_sint16; break;
-  case FFIDL_UINT32:		*argp = (void *)&type2->v_uint32; break;
-  case FFIDL_SINT32:		*argp = (void *)&type2->v_sint32; break;
+  case FFIDL_UINT8:		*valuePtr = (void *)&valueArea->v_uint8; break;
+  case FFIDL_SINT8:		*valuePtr = (void *)&valueArea->v_sint8; break;
+  case FFIDL_UINT16:		*valuePtr = (void *)&valueArea->v_uint16; break;
+  case FFIDL_SINT16:		*valuePtr = (void *)&valueArea->v_sint16; break;
+  case FFIDL_UINT32:		*valuePtr = (void *)&valueArea->v_uint32; break;
+  case FFIDL_SINT32:		*valuePtr = (void *)&valueArea->v_sint32; break;
 #if HAVE_INT64
-  case FFIDL_UINT64:		*argp = (void *)&type2->v_uint64; break;
-  case FFIDL_SINT64:		*argp = (void *)&type2->v_sint64; break;
+  case FFIDL_UINT64:		*valuePtr = (void *)&valueArea->v_uint64; break;
+  case FFIDL_SINT64:		*valuePtr = (void *)&valueArea->v_sint64; break;
 #endif
-  case FFIDL_PTR:		*argp = (void *)&type2->v_pointer; break;
-  case FFIDL_PTR_BYTE:		*argp = (void *)&type2->v_pointer; break;
-  case FFIDL_PTR_OBJ:		*argp = (void *)&type2->v_pointer; break;
-  case FFIDL_PTR_UTF8:		*argp = (void *)&type2->v_pointer; break;
-  case FFIDL_PTR_UTF16:		*argp = (void *)&type2->v_pointer; break;
-  case FFIDL_PTR_VAR:		*argp = (void *)&type2->v_pointer; break;
-  case FFIDL_PTR_PROC:		*argp = (void *)&type2->v_pointer; break;
-  case FFIDL_STRUCT:		*argp = (void *)&type2->v_struct; break;
+  case FFIDL_PTR:		*valuePtr = (void *)&valueArea->v_pointer; break;
+  case FFIDL_PTR_BYTE:		*valuePtr = (void *)&valueArea->v_pointer; break;
+  case FFIDL_PTR_OBJ:		*valuePtr = (void *)&valueArea->v_pointer; break;
+  case FFIDL_PTR_UTF8:		*valuePtr = (void *)&valueArea->v_pointer; break;
+  case FFIDL_PTR_UTF16:		*valuePtr = (void *)&valueArea->v_pointer; break;
+  case FFIDL_PTR_VAR:		*valuePtr = (void *)&valueArea->v_pointer; break;
+  case FFIDL_PTR_PROC:		*valuePtr = (void *)&valueArea->v_pointer; break;
+  case FFIDL_STRUCT:		*valuePtr = (void *)&valueArea->v_struct; break;
   default:
-    sprintf(buff, "unknown ffidl_type.t = %d", (*type1)->typecode);
+    sprintf(buff, "unknown ffidl_type.t = %d", (*typePtr)->typecode);
     Tcl_AppendResult(interp, buff, NULL);
     return TCL_ERROR;
   }
