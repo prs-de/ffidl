@@ -296,7 +296,7 @@ static void *tkStubsPtr, *tkPlatStubsPtr, *tkIntStubsPtr, *tkIntPlatStubsPtr, *t
 #endif
 #endif
 
-#ifndef USE_TCL_DLOPEN
+#if !defined(USE_TCL_DLOPEN) && !defined(USE_TCL_LOADFILE)
 /*****************************************
  *				  
  * ffidlopen, ffidlsym, and ffidlclose abstractions
@@ -2026,7 +2026,7 @@ static void client_delete(ClientData clientData, Tcl_Interp *interp)
   /* free all libs */
   for (entry = Tcl_FirstHashEntry(&client->libs, &search); entry != NULL; entry = Tcl_NextHashEntry(&search)) {
     void **libentry = Tcl_GetHashValue(entry);
-#ifdef USE_TCL_DLOPEN
+#if defined(USE_TCL_DLOPEN) || defined(USE_TCL_LOADFILE)
     ((Tcl_FSUnloadFileProc*)libentry[1])((Tcl_LoadHandle)libentry[0]);
 #else
     const char *error;
@@ -2774,7 +2774,7 @@ static int tcl_ffidl_symbol(ClientData clientData, Tcl_Interp *interp, int objc,
   const char *error;
   void *address;
   Tcl_DString ds;
-#ifdef USE_TCL_DLOPEN
+#if defined(USE_TCL_DLOPEN) || defined(USE_TCL_LOADFILE)
   Tcl_LoadHandle handle;
   Tcl_FSUnloadFileProc *unload;
 #else
@@ -2798,7 +2798,7 @@ static int tcl_ffidl_symbol(ClientData clientData, Tcl_Interp *interp, int objc,
 #elif defined(USE_TCL_LOADFILE)
     if (Tcl_LoadFile(interp, objv[1], NULL ,0 ,NULL ,&handle) != TCL_OK)
         return TCL_ERROR;
-    unload = &Tcl_FSUnloadFile;
+    unload = (Tcl_FSUnloadFileProc *)&Tcl_FSUnloadFile;
 #else
     native = Tcl_UtfToExternalDString(NULL, library, -1, &ds);
     handle = ffidlopen(strlen(native)?native:NULL, &error);
