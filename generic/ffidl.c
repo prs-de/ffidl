@@ -715,12 +715,12 @@ struct ffidl_callback {
  * In addition to the version string above
  */
 
-static Tcl_ObjType *ffidl_bytearray_ObjType;
-static Tcl_ObjType *ffidl_int_ObjType;
+static const Tcl_ObjType *ffidl_bytearray_ObjType;
+static const Tcl_ObjType *ffidl_int_ObjType;
 #if HAVE_WIDE_INT
-static Tcl_ObjType *ffidl_wideInt_ObjType;
+static const Tcl_ObjType *ffidl_wideInt_ObjType;
 #endif
-static Tcl_ObjType *ffidl_double_ObjType;
+static const Tcl_ObjType *ffidl_double_ObjType;
 
 /*
  * base types, the ffi base types and some additional bits.
