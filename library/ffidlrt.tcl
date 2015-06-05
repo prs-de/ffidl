@@ -99,10 +99,23 @@ namespace eval ::ffidl:: {
                         }
                     } else {
                         array set libs {
-                            c /lib/libc.so.6
-                            m /lib/libm.so.6
-                            gdbm /usr/lib/libgdbm.so
-                            gmp {/usr/local/lib/libgmp.so /usr/lib/libgmp.so.2}
+                            c {
+                                    /lib/libc.so.6
+                                    /lib/i386-linux-gnu/libc.so.6
+                            }
+                            m {
+                                    /lib/libm.so.6
+                                    /lib/i386-linux-gnu/libm.so.6
+                            }
+                            gdbm {
+                                    /usr/lib/libgdbm.so
+                                    /usr/lib/i386-linux-gnu/libgdbm.so.3
+                            }
+                            gmp {
+                                   /usr/lib/i386-linux-gnu/libgmp.so.2
+                                   /usr/local/lib/libgmp.so
+                                   /usr/lib/libgmp.so.2
+                            }
                             mathswig libmathswig0.5.so
                         }
                         array set types {
