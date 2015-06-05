@@ -547,7 +547,7 @@ EXTERN int	Ffidl_Init _ANSI_ARGS_((Tcl_Interp * interp));
 #else
 #define HAVE_WIDE_INT 1
 #define Tcl_NewWideIntOrLong Tcl_NewWideIntObj
-#define Tcl_GetWideIntOrLongFromObj Tcl_Tcl_GetWideIntOrLongFromObjGetWideIntFromObj
+#define Tcl_GetWideIntOrLongFromObj Tcl_GetWideIntFromObj
 #define Tcl_WideIntOrLong Tcl_WideInt
 #endif
 #endif
