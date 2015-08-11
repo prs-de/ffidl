@@ -24,7 +24,7 @@ typedef struct {
   unsigned char *v_pointer;
   unsigned char v_bytes[8];
 } ffidl_test_struct;
-ffidl_test_struct astruct = { 1, 2, 3, 4, 5, 6, (char *)7, "0123456" };
+ffidl_test_struct astruct = { 1, 2, 3, 4, 5, 6, (unsigned char *)7, "0123456" };
 
 EXTERN void ffidl_schar_to_void(signed char a) { return ; }
 EXTERN void ffidl_uchar_to_void(unsigned char a) { return ; }
