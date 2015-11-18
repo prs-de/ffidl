@@ -937,23 +937,24 @@ static int type_format(Tcl_Interp *interp, ffidl_type *type, int *offset)
   case FFIDL_PTR_UTF16:
   case FFIDL_PTR_VAR:
   case FFIDL_PTR_PROC:
-    if (type->size == sizeof(Tcl_WideIntOrLong)) {
+    switch (type->size) {
+    case sizeof(Tcl_WideIntOrLong):
       *offset += 8;
       Tcl_AppendResult(interp, FFIDL_WIDEINT_FORMAT, NULL);
       return TCL_OK;
-    } else if (type->size == sizeof(int)) {
+    case sizeof(int):
       *offset += 4;
       Tcl_AppendResult(interp, FFIDL_INT_FORMAT, NULL);
       return TCL_OK;
-    } else if (type->size == sizeof(short)) {
+    case sizeof(short):
       *offset += 2;
       Tcl_AppendResult(interp, FFIDL_SHORT_FORMAT, NULL);
       return TCL_OK;
-    } else if (type->size == sizeof(char)) {
+    case sizeof(char):
       *offset += 1;
       Tcl_AppendResult(interp, "c", NULL);
       return TCL_OK;
-    } else {
+    default:
       *offset += type->size;
       sprintf(buff, "c%lu", (long)(type->size));
       Tcl_AppendResult(interp, buff, NULL);
