@@ -184,15 +184,15 @@
           Ffidl uses the
           latest <a href="http://sources.redhat.com/libffi/">libffi-3.2.1</a>
           from
-          <a href= "http://savannah.gnu.org/cgi-bin/viewcvs/gcc/gcc/libffi/">gcc
+          <a href="http://savannah.gnu.org/cgi-bin/viewcvs/gcc/gcc/libffi/">gcc
             CVS</a> to dynamically construct calls to C functions from Tcl, to
           dynamically construct calls from C functions into Tcl. gcc libffi
           runs on all platforms where <a href=
                                          "http://gcc.gnu.org/java/">gcj</a> is available (which uses it).
         </p>
         <p>
-          Ffidl can also be configured (--enable-ffcall) to use <a href=
-                                                                   "http://www.haible.de/bruno/packages-ffcall.html">ffcall-1.10</a>
+          Ffidl can also be configured (--enable-ffcall) to use
+          <a href="http://www.haible.de/bruno/packages-ffcall.html">ffcall-1.10</a>
           a GPL'ed foreign function package which implements both callouts
           and callbacks on:
         </p>
@@ -293,18 +293,17 @@
         </h3>
         <p>
           Ffidl defines six Tcl commands in the <b>Ffidl</b> package:
-          <a href="#::ffidl::callout">::ffidl::callout</a>, <a href=
-                                                               "#::ffidl::callback">::ffidl::callback</a>, <a href=
-                                                                                                              "#::ffidl::symbol">::ffidl::symbol</a>, <a href=
-                                                                                                                                                         "#::ffidl::stubsymbol">::ffidl::stubsymbol</a>, <a href=
-                                                                                                                                                                                                            "#::ffidl::typedef">::ffidl::typedef</a>, and <a href=
-                                                                                                                                                                                                                                                             "#::ffidl::info">::ffidl::info</a>; exports one function from the
-          <b>Ffidl</b> shared library: <a href=
-                                          "#ffidl_pointer_pun">ffidl_pointer_pun</a>; and defines two
+          <a href="#::ffidl::callout">::ffidl::callout</a>,
+          <a href="#::ffidl::callback">::ffidl::callback</a>,
+          <a href="#::ffidl::symbol">::ffidl::symbol</a>,
+          <a href="#::ffidl::stubsymbol">::ffidl::stubsymbol</a>,
+          <a href="#::ffidl::typedef">::ffidl::typedef</a>, and
+          <a href="#::ffidl::info">::ffidl::info</a>; exports one function from the
+          <b>Ffidl</b> shared library:
+          <a href="#ffidl_pointer_pun">ffidl_pointer_pun</a>; and defines two
           helper procs in the <b>Ffidlrt</b> package in
-          <b>demos/ffidlrt.tcl</b>: <a href=
-                                       "#::ffidl::find-lib">::ffidl::find-lib</a>, and <a href=
-                                                                                          "#::ffidl::find-type">::ffidl::find-type</a>, which are currently
+          <b>demos/ffidlrt.tcl</b>: <a href="#::ffidl::find-lib">::ffidl::find-lib</a>,
+          and <a href="#::ffidl::find-type">::ffidl::find-type</a>, which are currently
           just stubs of their true form.
         </p>
         <p>
@@ -342,8 +341,8 @@
             values according to the <i>arg_types</i> specified, passed to
             <i>name</i>, the return value from <i>name</i> will be
             converted back into the specified <i>return_type</i>, and the
-            value will be returned to the caller. The allowed <a href=
-                                                                 "#types">types</a> are described below.
+            value will be returned to the caller. The allowed
+            <a href="#types">types</a> are described below.
             <p>
               The <i>protocol</i> specifies a calling convention to be
               used. The only platform which supports <i>protocols</i> is
@@ -1034,8 +1033,8 @@ configure &amp;&amp; make</code></pre>
           Note that <a href=
                        "http://www.haible.de/bruno/packages-ffcall.html">ffcall-1.10</a>
           is Copyright &copy; 1995-2004 Bruno Haible, &copy; 2000 Adam
-          Fedor, &copy; 2004 Paul Guyot and is licensed under the <a href=
-                                                                     "http://www.gnu.org">GNU General Public License</a> .
+          Fedor, &copy; 2004 Paul Guyot and is licensed under the
+          <a href="http://www.gnu.org">GNU General Public License</a>.
         </p>
       </section>
     </div>
