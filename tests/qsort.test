@@ -42,45 +42,51 @@ test ffidl-qsort {ffidl qsort tests} {callback} {
     # display a list of ints
     #
     proc print.ints {ints} {
+	set msg {}
         foreach {i1 i2 i3 i4 i5 i6 i7 i8} $ints {
             append msg "$i1 $i2 $i3 $i4 $i5 $i6 $i7 $i8" "\n"
         }
+	set msg
     }
     
     #
     # construct a binary array of random ints
     #
     set n 128
+    set ints {};
     for {set i 0} {$i < $n} {incr i} {
         lappend ints [expr {int(1000*rand())}]
     }
     #append msg before "\n"
-    #print.ints $ints
+    #append msg [print.ints $ints]
     set lsorted [lsort -integer $ints]
     
-    set ints [binary format [::ffidl::format int]* $ints]
+    set bints [binary format [::ffidl::format int]* $ints]
     
     #
     # qsort them
     #
-    qsort ints $n [::ffidl::sizeof int] cmp.int
+    qsort bints $n [::ffidl::sizeof int] cmp.int
     
     #
     # convert back to Tcl
     #
-    binary scan $ints [::ffidl::format int]* ints
+    binary scan $bints [::ffidl::format int]* qsorted
     
     #
     # write them out
     #
     #append msg after "\n"
-    #print.ints $ints
+    #append msg [print.ints $ints]
     
-    if {[string compare $lsorted $ints] != 0} {
-        append msg "lsorted list:" "\n"
-        print.ints $lsorted
-        append msg "qsorted list:" "\n"
-        print.ints $ints
+    set cmp [string compare $lsorted $qsorted];
+    if {$cmp != 0} {
+	append msg "original list:" "\n"
+	append msg [print.ints $ints]
+	append msg "lsorted list:" "\n"
+	append msg [print.ints $lsorted]
+	append msg "qsorted list:" "\n"
+	append msg [print.ints $qsorted]
     }
     set msg
     
@@ -89,3 +95,7 @@ test ffidl-qsort {ffidl qsort tests} {callback} {
 # cleanup
 ::tcltest::cleanupTests
 return
+
+# Local Variables:
+# mode: tcl
+# End:

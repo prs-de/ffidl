@@ -175,3 +175,7 @@ test ffidl-basic {ffidl basic tests} {} {
 # cleanup
 ::tcltest::cleanupTests
 return
+
+# Local Variables:
+# mode: tcl
+# End:

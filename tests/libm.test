@@ -21,6 +21,7 @@ namespace import ::libm::*
 set tcl_precision 17
 
 test ffidl-libm {ffidl libm tests} {} {
+    set msg ""
     
     set nfailed 0
     set ntests 0
@@ -184,3 +185,7 @@ test ffidl-libm {ffidl libm tests} {} {
 # cleanup
 ::tcltest::cleanupTests
 return
+
+# Local Variables:
+# mode: tcl
+# End:

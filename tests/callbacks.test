@@ -14,6 +14,7 @@ set lib [::ffidl::find-lib ffidl_test]
 testConstraint callback [llength [info commands ::ffidl::callback]]
 
 test ffidl-callbacks {ffidl callback tests} {callback} {
+    set msg ""
     
     ::ffidl::callout fchar {pointer-proc char char} char [::ffidl::symbol $lib ffidl_fchar]
     ::ffidl::callout fshort {pointer-proc short short} short [::ffidl::symbol $lib ffidl_fshort]
@@ -88,14 +89,17 @@ test ffidl-callbacks {ffidl callback tests} {callback} {
     # display a list of ints
     #
     proc print {ints} {
+	set msg "";
         foreach {i1 i2 i3 i4 i5 i6 i7 i8} $ints {
             append msg "$i1 $i2 $i3 $i4 $i5 $i6 $i7 $i8" "\n"
         }
+	set msg;
     }
     
     #
     # construct a binary array of random ints
     #
+    set ints {};
     set n 8
     for {set i 0} {$i < $n} {incr i} {
         lappend ints [expr {int(1000*rand())}]
@@ -120,9 +124,9 @@ test ffidl-callbacks {ffidl callback tests} {callback} {
     
     if {[string compare $ints $lsorted] != 0} {
         append msg "lsorted list:" "\n"
-        print $lsorted
+        append msg [print $lsorted];
         append msg "isorted list:" "\n"
-        print $ints
+        append msg [print $ints];
     } else {
         incr nsuccesses
     }
@@ -174,6 +178,6 @@ test ffidl-callbacks-4 {ffidl callback redefine} -constraints {callback} -setup 
 ::tcltest::cleanupTests
 return
 
-;; Local Variables:
-;; mode: tcl
-;; End:
+# Local Variables:
+# mode: tcl
+# End:
