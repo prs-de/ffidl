@@ -32,6 +32,9 @@ AC_PREREQ(2.59b)
 TEA_INIT([3.9])
 
 AC_CONFIG_AUX_DIR(tclconfig)
+AC_CONFIG_MACRO_DIR(tclconfig)
+
+PKG_PREREQ(0.9.0)
 
 #--------------------------------------------------------------------
 # ffidl autoheader
@@ -137,35 +140,59 @@ TEA_PRIVATE_TCL_HEADERS
 
 AC_MSG_CHECKING([which library to use for foreign function calls])
 
-AC_ARG_ENABLE(libffi, 
-    AC_HELP_STRING([--enable-libffi],
-        [use libffi for foreign function calls [--enable-libffi]]), 
-    [libffi=$enableval], [libffi=default])
-AC_ARG_ENABLE(ffcall, 
-    AC_HELP_STRING([--enable-ffcall],
-        [use ffcall for foreign function calls [--disable-ffcall]]), 
-    [ffcall=$enableval], [ffcall=no])
-case $libffi,$ffcall in
-  yes,no|default,no)
-	AC_DEFINE(USE_LIBFFI, 1, [Use libffi for foreign function calls])
-	TEA_ADD_INCLUDES([-Ilibffi/include])
-	TEA_ADD_LIBS([libffi/.libs/libffi.a])
-	FFIDL_FFLIB=libffi
-	AC_MSG_RESULT([libffi])
-  ;;
-  no,yes|default,yes)
-	AC_DEFINE(USE_FFCALL, 1, [Use ffcall for foreign function calls])
-	TEA_ADD_INCLUDES([-Iffcall/avcall -Iffcall/callback])
-	TEA_ADD_LIBS([ffcall/avcall/.libs/libavcall.a 
-	              ffcall/callback/.libs/libcallback.a])
-	FFIDL_FFLIB=ffcall
-	AC_MSG_RESULT([ffcall])
-  ;;
-  yes,yes)
-          AC_MSG_ERROR([You cannot use both --enable-libffi and --enable-ffcall.])
-  ;;
-esac
-AC_SUBST(FFIDL_FFLIB)
+AC_ARG_WITH([libffi],
+    AS_HELP_STRING([--with-libffi],
+        [use libffi for foreign function calls [--with-libffi=yes]]),
+    [], [with_libffi=default])
+
+AC_ARG_ENABLE([libffi_static],
+    AS_HELP_STRING([--disable-static-libffi],
+        [statically link libffi [--enable-static-libffi]]),
+	[], [enable_libffi_static=yes])
+
+AC_ARG_WITH([libffcall],
+    AS_HELP_STRING([--with-libffcall],
+        [use libffcall for foreign function calls [--with-libffcall=no]]),
+    [], [with_libffcall=default])
+
+AC_ARG_ENABLE([libffcall_static],
+    AS_HELP_STRING([--disable-static-libffcall],
+        [statically link libffcall [--enable-static-libffcall]]),
+	[], [enable_libffcall_static=yes])
+
+# Either of libffi or libffcall might be used.
+AS_CASE([$with_libffi,$with_libffcall],
+    [no,no],[AC_MSG_ERROR([Please, enable either of --with-libffi or --with-libffcall.])],
+    [default,default],[AS_VAR_SET([with_libffi], [yes])],
+    [no,default],[AS_VAR_SET([with_libffcall], [yes])],
+    [default,no],[AS_VAR_SET([with_libffi], [yes])],
+    [default,yes],[], dnl continue
+    [yes,default],[], dnl continue
+    [no,yes],[], dnl continue
+    [yes,no],[], dnl continue
+    [AC_MSG_ERROR([Please, enable either of --with-libffi or --with-libffcall.])])
+
+AS_IF([test "x$with_libffi" = "xyes"],
+    [AC_DEFINE(USE_LIBFFI, 1, [Use libffi for foreign function calls])
+     PKG_CHECK_MODULES([LIBFFI], [libffi],
+	[dnl Must pass the full path for static linking.
+	 AS_IF([test "x$enable_libffi_static" = "xyes"],
+	    [AS_VAR_SET([LIBFFI_LIBDIR], [`$PKG_CONFIG libffi --variable=libdir`])
+	     AS_VAR_SET([LIBFFI_LIBS], [$LIBFFI_LIBDIR/libffi.a])])])
+     TEA_ADD_INCLUDES([$LIBFFI_CFLAGS])
+     TEA_ADD_LIBS([$LIBFFI_LIBS])])
+
+AS_IF([test "x$with_libffcall" = "xyes"],
+    [AC_DEFINE(USE_LIBFFCALL, 1, [Use libffcall for foreign function calls])
+     PKG_CHECK_MODULES([LIBFFCALL], [libffcall],
+	[dnl Must pass the full path for static linking.
+	 AS_IF([test "x$enable_libffcall_static" = "xyes"],
+	    [AS_VAR_SET_IF([LIBFFCALL_LIBDIR],
+		[],
+		[AS_VAR_SET([LIBFFCALL_LIBDIR], [`$PKG_CONFIG libffcall --variable=libdir`])])
+	     AS_VAR_SET([LIBFFCALL_LIBS], ["${LIBFFCALL_LIBDIR}/libavcall.a ${LIBFFCALL_LIBDIR}/libcallback.a"])])])
+     TEA_ADD_INCLUDES([$LIBFFCALL_CFLAGS])
+     TEA_ADD_LIBS([$LIBFFCALL_LIBS])])
 
 AC_MSG_CHECKING([whether to implement callbacks])
 AC_ARG_ENABLE(callbacks, 

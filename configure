@@ -655,7 +655,13 @@ build_vendor
 build_cpu
 build
 FFIDL_TEST
-FFIDL_FFLIB
+LIBFFCALL_LIBS
+LIBFFCALL_CFLAGS
+LIBFFI_LIBS
+LIBFFI_CFLAGS
+PKG_CONFIG_LIBDIR
+PKG_CONFIG_PATH
+PKG_CONFIG
 TCL_TOP_DIR_NATIVE
 TCL_INCLUDES
 PKG_OBJECTS
@@ -749,8 +755,10 @@ ac_user_opts='
 enable_option_checking
 with_tcl
 with_tclinclude
-enable_libffi
-enable_ffcall
+with_libffi
+enable_libffi_static
+with_libffcall
+enable_libffcall_static
 enable_callbacks
 enable_test
 enable_threads
@@ -771,7 +779,14 @@ CFLAGS
 LDFLAGS
 LIBS
 CPPFLAGS
-CPP'
+CPP
+PKG_CONFIG
+PKG_CONFIG_PATH
+PKG_CONFIG_LIBDIR
+LIBFFI_CFLAGS
+LIBFFI_LIBS
+LIBFFCALL_CFLAGS
+LIBFFCALL_LIBS'
 
 
 # Initialize some variables set by options.
@@ -1385,10 +1400,10 @@ Optional Features:
   --disable-option-checking  ignore unrecognized --enable/--with options
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
-  --enable-libffi         use libffi for foreign function calls
-                          [--enable-libffi]
-  --enable-ffcall         use ffcall for foreign function calls
-                          [--disable-ffcall]
+  --disable-static-libffi statically link libffi [--enable-static-libffi]
+  --disable-static-libffcall
+                          statically link libffcall
+                          [--enable-static-libffcall]
   --enable-callbacks      implement callbacks, if possible
                           [--enable-callbacks]
   --enable-test           build ffidl test functions [--disable-test]
@@ -1408,6 +1423,10 @@ Optional Packages:
   --with-tcl              directory containing tcl configuration
                           (tclConfig.sh)
   --with-tclinclude       directory containing the public Tcl header files
+  --with-libffi           use libffi for foreign function calls
+                          [--with-libffi=yes]
+  --with-libffcall        use libffcall for foreign function calls
+                          [--with-libffcall=no]
   --with-celib=DIR        use Windows/CE support library from DIR
 
 Some influential environment variables:
@@ -1419,6 +1438,18 @@ Some influential environment variables:
   CPPFLAGS    (Objective) C/C++ preprocessor flags, e.g. -I<include dir> if
               you have headers in a nonstandard directory <include dir>
   CPP         C preprocessor
+  PKG_CONFIG  path to pkg-config utility
+  PKG_CONFIG_PATH
+              directories to add to pkg-config's search path
+  PKG_CONFIG_LIBDIR
+              path overriding pkg-config's built-in search path
+  LIBFFI_CFLAGS
+              C compiler flags for LIBFFI, overriding pkg-config
+  LIBFFI_LIBS linker flags for LIBFFI, overriding pkg-config
+  LIBFFCALL_CFLAGS
+              C compiler flags for LIBFFCALL, overriding pkg-config
+  LIBFFCALL_LIBS
+              linker flags for LIBFFCALL, overriding pkg-config
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -5896,34 +5927,289 @@ $as_echo "${result}" >&6; }
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking which library to use for foreign function calls" >&5
 $as_echo_n "checking which library to use for foreign function calls... " >&6; }
 
-# Check whether --enable-libffi was given.
-if test "${enable_libffi+set}" = set; then :
-  enableval=$enable_libffi; libffi=$enableval
+
+# Check whether --with-libffi was given.
+if test "${with_libffi+set}" = set; then :
+  withval=$with_libffi;
 else
-  libffi=default
+  with_libffi=default
 fi
 
-# Check whether --enable-ffcall was given.
-if test "${enable_ffcall+set}" = set; then :
-  enableval=$enable_ffcall; ffcall=$enableval
+
+# Check whether --enable-libffi_static was given.
+if test "${enable_libffi_static+set}" = set; then :
+  enableval=$enable_libffi_static;
 else
-  ffcall=no
+  enable_libffi_static=yes
 fi
 
-case $libffi,$ffcall in
-  yes,no|default,no)
+
+
+# Check whether --with-libffcall was given.
+if test "${with_libffcall+set}" = set; then :
+  withval=$with_libffcall;
+else
+  with_libffcall=default
+fi
+
+
+# Check whether --enable-libffcall_static was given.
+if test "${enable_libffcall_static+set}" = set; then :
+  enableval=$enable_libffcall_static;
+else
+  enable_libffcall_static=yes
+fi
+
+
+# Either of libffi or libffcall might be used.
+case $with_libffi,$with_libffcall in #(
+  no,no) :
+    as_fn_error $? "Please, enable either of --with-libffi or --with-libffcall." "$LINENO" 5 ;; #(
+  default,default) :
+    with_libffi=yes ;; #(
+  no,default) :
+    with_libffcall=yes ;; #(
+  default,no) :
+    with_libffi=yes ;; #(
+  default,yes) :
+     ;; #(
+      yes,default) :
+     ;; #(
+      no,yes) :
+     ;; #(
+      yes,no) :
+     ;; #(
+  *) :
+        as_fn_error $? "Please, enable either of --with-libffi or --with-libffcall." "$LINENO" 5 ;;
+esac
+
+
+
+
+
+
+
+
+if test "x$ac_cv_env_PKG_CONFIG_set" != "xset"; then
+	if test -n "$ac_tool_prefix"; then
+  # Extract the first word of "${ac_tool_prefix}pkg-config", so it can be a program name with args.
+set dummy ${ac_tool_prefix}pkg-config; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_path_PKG_CONFIG+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $PKG_CONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PKG_CONFIG="$PKG_CONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_path_PKG_CONFIG="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+PKG_CONFIG=$ac_cv_path_PKG_CONFIG
+if test -n "$PKG_CONFIG"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $PKG_CONFIG" >&5
+$as_echo "$PKG_CONFIG" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+fi
+if test -z "$ac_cv_path_PKG_CONFIG"; then
+  ac_pt_PKG_CONFIG=$PKG_CONFIG
+  # Extract the first word of "pkg-config", so it can be a program name with args.
+set dummy pkg-config; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_path_ac_pt_PKG_CONFIG+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $ac_pt_PKG_CONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_ac_pt_PKG_CONFIG="$ac_pt_PKG_CONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_path_ac_pt_PKG_CONFIG="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+ac_pt_PKG_CONFIG=$ac_cv_path_ac_pt_PKG_CONFIG
+if test -n "$ac_pt_PKG_CONFIG"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_pt_PKG_CONFIG" >&5
+$as_echo "$ac_pt_PKG_CONFIG" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+  if test "x$ac_pt_PKG_CONFIG" = x; then
+    PKG_CONFIG=""
+  else
+    case $cross_compiling:$ac_tool_warned in
+yes:)
+{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: using cross tools not prefixed with host triplet" >&5
+$as_echo "$as_me: WARNING: using cross tools not prefixed with host triplet" >&2;}
+ac_tool_warned=yes ;;
+esac
+    PKG_CONFIG=$ac_pt_PKG_CONFIG
+  fi
+else
+  PKG_CONFIG="$ac_cv_path_PKG_CONFIG"
+fi
+
+fi
+if test -n "$PKG_CONFIG"; then
+	_pkg_min_version=0.9.0
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking pkg-config is at least version $_pkg_min_version" >&5
+$as_echo_n "checking pkg-config is at least version $_pkg_min_version... " >&6; }
+	if $PKG_CONFIG --atleast-pkgconfig-version $_pkg_min_version; then
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	else
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+		PKG_CONFIG=""
+	fi
+fi
+if test "x$with_libffi" = "xyes"; then :
 
 $as_echo "#define USE_LIBFFI 1" >>confdefs.h
 
 
-    vars="-Ilibffi/include"
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for libffi" >&5
+$as_echo_n "checking for libffi... " >&6; }
+
+if test -n "$LIBFFI_CFLAGS"; then
+    pkg_cv_LIBFFI_CFLAGS="$LIBFFI_CFLAGS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libffi\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libffi") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_LIBFFI_CFLAGS=`$PKG_CONFIG --cflags "libffi" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+if test -n "$LIBFFI_LIBS"; then
+    pkg_cv_LIBFFI_LIBS="$LIBFFI_LIBS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libffi\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libffi") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_LIBFFI_LIBS=`$PKG_CONFIG --libs "libffi" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        LIBFFI_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libffi" 2>&1`
+        else
+	        LIBFFI_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libffi" 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$LIBFFI_PKG_ERRORS" >&5
+
+	as_fn_error $? "Package requirements (libffi) were not met:
+
+$LIBFFI_PKG_ERRORS
+
+Consider adjusting the PKG_CONFIG_PATH environment variable if you
+installed software in a non-standard prefix.
+
+Alternatively, you may set the environment variables LIBFFI_CFLAGS
+and LIBFFI_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details." "$LINENO" 5
+elif test $pkg_failed = untried; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "The pkg-config script could not be found or is too old.  Make sure it
+is in your PATH or set the PKG_CONFIG environment variable to the full
+path to pkg-config.
+
+Alternatively, you may set the environment variables LIBFFI_CFLAGS
+and LIBFFI_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+
+To get pkg-config, see <http://pkg-config.freedesktop.org/>.
+See \`config.log' for more details" "$LINENO" 5; }
+else
+	LIBFFI_CFLAGS=$pkg_cv_LIBFFI_CFLAGS
+	LIBFFI_LIBS=$pkg_cv_LIBFFI_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		 if test "x$enable_libffi_static" = "xyes"; then :
+  LIBFFI_LIBDIR=`$PKG_CONFIG libffi --variable=libdir`
+	     LIBFFI_LIBS=$LIBFFI_LIBDIR/libffi.a
+fi
+fi
+
+    vars="$LIBFFI_CFLAGS"
     for i in $vars; do
 	PKG_INCLUDES="$PKG_INCLUDES $i"
     done
 
 
 
-    vars="libffi/.libs/libffi.a"
+    vars="$LIBFFI_LIBS"
     for i in $vars; do
 	if test "${TEA_PLATFORM}" = "windows" -a "$GCC" = "yes" ; then
 	    # Convert foo.lib to -lfoo for GCC.  No-op if not *.lib
@@ -5933,24 +6219,119 @@ $as_echo "#define USE_LIBFFI 1" >>confdefs.h
     done
 
 
-	FFIDL_FFLIB=libffi
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: libffi" >&5
-$as_echo "libffi" >&6; }
-  ;;
-  no,yes|default,yes)
+fi
 
-$as_echo "#define USE_FFCALL 1" >>confdefs.h
+if test "x$with_libffcall" = "xyes"; then :
+
+$as_echo "#define USE_LIBFFCALL 1" >>confdefs.h
 
 
-    vars="-Iffcall/avcall -Iffcall/callback"
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for libffcall" >&5
+$as_echo_n "checking for libffcall... " >&6; }
+
+if test -n "$LIBFFCALL_CFLAGS"; then
+    pkg_cv_LIBFFCALL_CFLAGS="$LIBFFCALL_CFLAGS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libffcall\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libffcall") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_LIBFFCALL_CFLAGS=`$PKG_CONFIG --cflags "libffcall" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+if test -n "$LIBFFCALL_LIBS"; then
+    pkg_cv_LIBFFCALL_LIBS="$LIBFFCALL_LIBS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libffcall\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libffcall") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_LIBFFCALL_LIBS=`$PKG_CONFIG --libs "libffcall" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        LIBFFCALL_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libffcall" 2>&1`
+        else
+	        LIBFFCALL_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libffcall" 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$LIBFFCALL_PKG_ERRORS" >&5
+
+	as_fn_error $? "Package requirements (libffcall) were not met:
+
+$LIBFFCALL_PKG_ERRORS
+
+Consider adjusting the PKG_CONFIG_PATH environment variable if you
+installed software in a non-standard prefix.
+
+Alternatively, you may set the environment variables LIBFFCALL_CFLAGS
+and LIBFFCALL_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details." "$LINENO" 5
+elif test $pkg_failed = untried; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "The pkg-config script could not be found or is too old.  Make sure it
+is in your PATH or set the PKG_CONFIG environment variable to the full
+path to pkg-config.
+
+Alternatively, you may set the environment variables LIBFFCALL_CFLAGS
+and LIBFFCALL_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+
+To get pkg-config, see <http://pkg-config.freedesktop.org/>.
+See \`config.log' for more details" "$LINENO" 5; }
+else
+	LIBFFCALL_CFLAGS=$pkg_cv_LIBFFCALL_CFLAGS
+	LIBFFCALL_LIBS=$pkg_cv_LIBFFCALL_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		 if test "x$enable_libffcall_static" = "xyes"; then :
+  if ${LIBFFCALL_LIBDIR+:} false; then :
+
+else
+  LIBFFCALL_LIBDIR=`$PKG_CONFIG libffcall --variable=libdir`
+fi
+	     LIBFFCALL_LIBS="${LIBFFCALL_LIBDIR}/libavcall.a ${LIBFFCALL_LIBDIR}/libcallback.a"
+fi
+fi
+
+    vars="$LIBFFCALL_CFLAGS"
     for i in $vars; do
 	PKG_INCLUDES="$PKG_INCLUDES $i"
     done
 
 
 
-    vars="ffcall/avcall/.libs/libavcall.a
-	              ffcall/callback/.libs/libcallback.a"
+    vars="$LIBFFCALL_LIBS"
     for i in $vars; do
 	if test "${TEA_PLATFORM}" = "windows" -a "$GCC" = "yes" ; then
 	    # Convert foo.lib to -lfoo for GCC.  No-op if not *.lib
@@ -5960,15 +6341,7 @@ $as_echo "#define USE_FFCALL 1" >>confdefs.h
     done
 
 
-	FFIDL_FFLIB=ffcall
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ffcall" >&5
-$as_echo "ffcall" >&6; }
-  ;;
-  yes,yes)
-          as_fn_error $? "You cannot use both --enable-libffi and --enable-ffcall." "$LINENO" 5
-  ;;
-esac
-
+fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to implement callbacks" >&5
 $as_echo_n "checking whether to implement callbacks... " >&6; }

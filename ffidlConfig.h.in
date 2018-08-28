@@ -212,8 +212,8 @@
 /* Implement callbacks */
 #undef USE_CALLBACKS
 
-/* Use ffcall for foreign function calls */
-#undef USE_FFCALL
+/* Use libffcall for foreign function calls */
+#undef USE_LIBFFCALL
 
 /* Use libffi for foreign function calls */
 #undef USE_LIBFFI

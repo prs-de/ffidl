@@ -349,45 +349,21 @@ dist: dist-clean
 # End of user-definable section
 #========================================================================
 
-# FFIDL_LIB is either libffi ffcall.
-FFIDL_FFLIB = @FFIDL_FFLIB@
-FFIDL_FFLIB_BUILDDIR = @FFIDL_FFLIB@
-FFIDL_FFLIB_SOURCEDIR = $(srcdir)/lib-src/@FFIDL_FFLIB@
-FFIDL_FFLIB_MAKEFILE = $(FFIDL_FFLIB_BUILDDIR)/Makefile
-FFIDL_FFLIB_libffi_LIBRARY = $(FFIDL_FFLIB_BUILDDIR)/.libs/libffi.a
-FFIDL_FFLIB_ffcall_LIBRARY = $(FFIDL_FFLIB_BUILDDIR)/avcall/.libs/libavcall.a
-FFIDL_FFLIB_LIBRARY = $(FFIDL_FFLIB_@FFIDL_FFLIB@_LIBRARY)
-FFIDL_FFLIB_libffi_MAKE_ARGS =
-FFIDL_FFLIB_ffcall_MAKE_ARGS = -j1
-FFIDL_FFLIB_MAKE_ARGS = $(FFIDL_FFLIB_@FFIDL_FFLIB@_MAKE_ARGS)
-
-$(FFIDL_FFLIB_MAKEFILE):
-	mkdir -p $(FFIDL_FFLIB_BUILDDIR) && \
-	cd $(FFIDL_FFLIB_BUILDDIR) && \
-	`cd .. && cd $(FFIDL_FFLIB_SOURCEDIR) && pwd`/configure \
-	    --disable-shared --with-pic
-$(FFIDL_FFLIB_LIBRARY): $(FFIDL_FFLIB_MAKEFILE)
-	$(MAKE) $(FFIDL_FFLIB_MAKE_ARGS) -C $(FFIDL_FFLIB_BUILDDIR)
-.PHONY: $(FFIDL_LIB_TARGET)
-
-$(PKG_OBJECTS): $(FFIDL_FFLIB_LIBRARY)
-
 #========================================================================
 # Don't modify the file to clean here.  Instead, set the "CLEANFILES"
 # variable in configure.in
 #========================================================================
 
-clean:  
+clean:
 	-test -z "$(BINARIES)" || rm -f $(BINARIES)
 	-rm -f *.$(OBJEXT) core *.core
 	-test -z "$(CLEANFILES)" || rm -f $(CLEANFILES)
-	-$(MAKE) -C @FFIDL_FFLIB@ $@
+
 
 distclean: clean
 	-rm -f *.tab.c
 	-rm -f $(CONFIG_CLEAN_FILES)
 	-rm -f config.cache config.log config.status
-	-$(MAKE) -C @FFIDL_FFLIB@ $@ && rm -r @FFIDL_FFLIB@
 
 #========================================================================
 # Install binary object libraries.  On Windows this includes both .dll and
