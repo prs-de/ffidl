@@ -967,10 +967,11 @@ static int ffidlsymfallback(ffidl_LoadHandle handle,
    */
   *address = GetProcAddress(handle, nativeSymbolName);
   if (!*address) {
-    error = "???";
+    unknown = "unknown error";
     status = TCL_ERROR;
   }
 #else
+  dlerror();			/* clear any old error. */
   *address = dlsym(handle, nativeSymbolName);
   error = dlerror();
   if (error) {
@@ -1084,7 +1085,9 @@ static int ffidlopen(Tcl_Interp *interp,
     status = TCL_ERROR;
   } else {
     *handle = LoadLibraryA(nativeLibraryName);
-    error = *handle ? NULL : "???";
+    if (!*handle) {
+      error = "unknown error";
+    }
   }
 #else
   {
@@ -1092,7 +1095,10 @@ static int ffidlopen(Tcl_Interp *interp,
       (flags.visibility == FFIDL_LOAD_VISIBILITY_LOCAL? RTLD_LOCAL : RTLD_GLOBAL) |
       (flags.binding == FFIDL_LOAD_BINDING_LAZY? RTLD_LAZY : RTLD_NOW);
     *handle = dlopen(nativeLibraryName, dlflags);
-    error = dlerror();
+    /* dlopen returns NULL when it fails. */
+    if (!*handle) {
+      error = dlerror();
+    }
   }
 #endif
 
@@ -1129,7 +1135,7 @@ static int ffidlclose(Tcl_Interp *interp,
 #if defined(__WIN32__)
   if (!FreeLibrary(handle)) {
     status = TCL_ERROR;
-    error = "???";
+    error = "unknown error";
   }
 #else
   if (dlclose(handle)) {
