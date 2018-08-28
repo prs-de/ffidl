@@ -1472,10 +1472,26 @@ static int cif_protocol(Tcl_Interp *interp, Tcl_Obj *obj, int *protocolp, char *
     if (len == 0 || strcmp(*protocolnamep, "default") == 0) {
       *protocolp = FFI_DEFAULT_ABI;
       *protocolnamep = NULL;
+#  if defined(X86_WIN64)
+    } else if (strcmp(*protocolnamep, "win64") == 0) {
+      *protocolp = FFI_WIN64;
+#  else	 /* X86_WIN64 */
     } else if (strcmp(*protocolnamep, "cdecl") == 0) {
       *protocolp = FFI_SYSV;
     } else if (strcmp(*protocolnamep, "stdcall") == 0) {
       *protocolp = FFI_STDCALL;
+    } else if (strcmp(*protocolnamep, "thiscall") == 0) {
+      *protocolp = FFI_THISCALL;
+    } else if (strcmp(*protocolnamep, "fastcall") == 0) {
+      *protocolp = FFI_FASTCALL;
+#    if defined(X86_WIN32)
+    } else if (strcmp(*protocolnamep, "mscdecl") == 0) {
+      *protocolp = FFI_MS_CDECL;
+#    elif defined(X86_64)	/* X86_WIN32 */
+    } else if (strcmp(*protocolnamep, "unix64") == 0) {
+      *protocolp = FFI_UNIX64;
+#    endif  /* X86_64 */
+#  endif  /* X86_WIN64 */
     } else {
       Tcl_AppendResult(interp, "unknown protocol \"", *protocolnamep,
 		       "\", must be cdecl or stdcall",
@@ -1488,11 +1504,11 @@ static int cif_protocol(Tcl_Interp *interp, Tcl_Obj *obj, int *protocolp, char *
       *protocolp = FFI_DEFAULT_ABI;
       *protocolnamep = NULL;
     }
-#endif
+#endif	/* USE_LIBFFI */
 #if USE_FFCALL
   *protocolp = 0;
   *protocolnamep = NULL;
-#endif
+#endif	/* USE_FFCALL */
   return TCL_OK;
 }
 /*
