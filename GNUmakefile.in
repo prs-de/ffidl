@@ -349,21 +349,28 @@ dist: dist-clean
 # End of user-definable section
 #========================================================================
 
-fflibs   := libffi ffcall
-$(fflibs): %: %/Makefile
-	$(MAKE) $(fflib_make_args) -C $* 
-$(fflibs:%=%/Makefile): %/Makefile:
-	mkdir -p $* && cd $* && \
-	`cd .. && cd $(srcdir) && pwd`/lib-src/$*/configure \
-	    --disable-shared --with-pic
-ffcall: fflib_make_args=-j1
-.PHONY: $(fflibs)
+# FFIDL_LIB is either libffi ffcall.
+FFIDL_FFLIB = @FFIDL_FFLIB@
+FFIDL_FFLIB_BUILDDIR = @FFIDL_FFLIB@
+FFIDL_FFLIB_SOURCEDIR = $(srcdir)/lib-src/@FFIDL_FFLIB@
+FFIDL_FFLIB_MAKEFILE = $(FFIDL_FFLIB_BUILDDIR)/Makefile
+FFIDL_FFLIB_libffi_LIBRARY = $(FFIDL_FFLIB_BUILDDIR)/.libs/libffi.a
+FFIDL_FFLIB_ffcall_LIBRARY = $(FFIDL_FFLIB_BUILDDIR)/avcall/.libs/libavcall.a
+FFIDL_FFLIB_LIBRARY = $(FFIDL_FFLIB_@FFIDL_FFLIB@_LIBRARY)
+FFIDL_FFLIB_libffi_MAKE_ARGS =
+FFIDL_FFLIB_ffcall_MAKE_ARGS = -j1
+FFIDL_FFLIB_MAKE_ARGS = $(FFIDL_FFLIB_@FFIDL_FFLIB@_MAKE_ARGS)
 
-libffi  := libffi/.libs/libffi.a
-ffcall  := ffcall/avcall/.libs/libavcall.a
-$(@FFIDL_FFLIB@):
-	$(MAKE) @FFIDL_FFLIB@
-$(PKG_OBJECTS): $(@FFIDL_FFLIB@)
+$(FFIDL_FFLIB_MAKEFILE):
+	mkdir -p $(FFIDL_FFLIB_BUILDDIR) && \
+	cd $(FFIDL_FFLIB_BUILDDIR) && \
+	`cd .. && cd $(FFIDL_FFLIB_SOURCEDIR) && pwd`/configure \
+	    --disable-shared --with-pic
+$(FFIDL_FFLIB_LIBRARY): $(FFIDL_FFLIB_MAKEFILE)
+	$(MAKE) $(FFIDL_FFLIB_MAKE_ARGS) -C $(FFIDL_FFLIB_BUILDDIR)
+.PHONY: $(FFIDL_LIB_TARGET)
+
+$(PKG_OBJECTS): $(FFIDL_FFLIB_LIBRARY)
 
 #========================================================================
 # Don't modify the file to clean here.  Instead, set the "CLEANFILES"
