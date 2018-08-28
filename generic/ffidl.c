@@ -413,17 +413,51 @@ static int ffidlsym(Tcl_Interp *interp,
   return status;
 }
 
+enum ffidl_load_binding {
+  FFIDL_LOAD_BINDING_NONE,
+  FFIDL_LOAD_BINDING_NOW,
+  FFIDL_LOAD_BINDING_LAZY
+};
+
+enum ffidl_load_visibility {
+  FFIDL_LOAD_VISIBILITY_NONE,
+  FFIDL_LOAD_VISIBILITY_LOCAL,
+  FFIDL_LOAD_VISIBILITY_GLOBAL
+};
+
+struct ffidl_load_flags {
+  enum ffidl_load_binding binding;
+  enum ffidl_load_visibility visibility;
+};
+typedef struct ffidl_load_flags ffidl_load_flags;
+
 static int ffidlopen(Tcl_Interp *interp,
 		     Tcl_Obj *libNameObj,
+		     ffidl_load_flags flags,
 		     ffidl_LoadHandle *handle,
 		     ffidl_UnloadProc *unload)
 {
   int status = TCL_OK;
 #if defined(USE_TCL_DLOPEN)
-  status = TclpDlopen(interp, libNameObj, handle, unload);
-#elif defined(USE_TCL_LOADFILE)
-  if (Tcl_LoadFile(interp, libNameObj, NULL, 0, NULL, handle) != TCL_OK) {
+  if (flags.binding != FFIDL_LOAD_BINDING_NONE ||
+      flags.visibility != FFIDL_LOAD_VISIBILITY_NONE) {
+    char *libraryName = NULL;
+    libraryName = Tcl_GetString(libNameObj);
+    Tcl_AppendResult(interp, "couldn't load file \"", libraryName, "\" : ",
+		     "loading flags are not supported with USE_TCL_DLOPEN configuration",
+		     (char *) NULL);
     status = TCL_ERROR;
+  } else {
+    status = TclpDlopen(interp, libNameObj, handle, unload);
+  }
+#elif defined(USE_TCL_LOADFILE)
+  {
+    int tclflags =
+      (flags.visibility == FFIDL_LOAD_VISIBILITY_GLOBAL? TCL_LOAD_GLOBAL : 0) |
+      (flags.binding == FFIDL_LOAD_BINDING_LAZY? TCL_LOAD_LAZY : 0);
+    if (Tcl_LoadFile(interp, libNameObj, NULL, tclflags, NULL, handle) != TCL_OK) {
+      status = TCL_ERROR;
+    }
   }
   *unload = NULL;
 #else
@@ -437,11 +471,22 @@ static int ffidlopen(Tcl_Interp *interp,
   nativeLibraryName = strlen(nativeLibraryName) ? nativeLibraryName : NULL;
 
 #ifdef __WIN32__
-  *handle = LoadLibraryA(nativeLibraryName);
-  error = *handle ? NULL : "???";
+  if (flags.binding != FFIDL_LOAD_BINDING_NONE ||
+      flags.visibility != FFIDL_LOAD_VISIBILITY_NONE) {
+    error = "loading flags are not supported under windows";
+    status = TCL_ERROR;
+  } else {
+    *handle = LoadLibraryA(nativeLibraryName);
+    error = *handle ? NULL : "???";
+  }
 #else
-  *handle = dlopen(nativeLibraryName, RTLD_NOW | RTLD_GLOBAL);
-  error = dlerror();
+  {
+    int dlflags =
+      (flags.visibility == FFIDL_LOAD_VISIBILITY_LOCAL? RTLD_LOCAL : RTLD_GLOBAL) |
+      (flags.binding == FFIDL_LOAD_BINDING_LAZY? RTLD_LAZY : RTLD_NOW);
+    *handle = dlopen(nativeLibraryName, dlflags);
+    error = dlerror();
+  }
 #endif
 
   if (*handle == NULL) {
@@ -3055,6 +3100,147 @@ error:
   return TCL_ERROR;
 }
 #endif
+
+/* usage: ffidl::library library ?options...?*/
+static int tcl_ffidl_library(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{
+  enum {
+    command_ix,
+    optional_ix,
+    minargs
+  };
+
+   static const char *options[] = {
+      "-binding",
+      "-visibility",
+      "--",
+      NULL,
+   };
+
+  enum {
+    option_binding,
+    option_visibility,
+    option_break,
+  };
+
+   static const char *bindingOptions[] = {
+      "now",
+      "lazy",
+      NULL,
+   };
+
+   enum {
+     binding_now,
+     binding_lazy,
+   };
+
+   static const char *visibilityOptions[] = {
+      "global",
+      "local",
+      NULL,
+   };
+
+  enum {
+    visibility_global,
+    visibility_local,
+  };
+
+  int i = 0;
+  ffidl_load_flags flags = {FFIDL_LOAD_BINDING_NONE, FFIDL_LOAD_VISIBILITY_NONE};
+  Tcl_Obj *libraryObj;
+  char *libraryName;
+  ffidl_LoadHandle handle;
+  ffidl_UnloadProc unload;
+  ffidl_client *client = (ffidl_client *)clientData;
+
+  if (objc < minargs) {
+    Tcl_WrongNumArgs(interp, 1, objv, "?flags? ?--? library");
+    return TCL_ERROR;
+  }
+
+  for (i = optional_ix; i < objc; ++i) {
+      int option;
+      int status = Tcl_GetIndexFromObj(interp, objv[i], options,
+                                       "option", 0, &option);
+      if (status != TCL_OK) {
+	/* No options. */
+	Tcl_ResetResult(interp);
+	break;
+      }
+
+      if (option_break == option) {
+	/* End of options. */
+	i++;
+	break;
+      }
+
+      switch (option) {
+	case option_binding:
+	{
+	  int bindingOption;
+
+	  i++;
+	  int status = Tcl_GetIndexFromObj(interp, objv[i], bindingOptions,
+					   "binding", 0, &bindingOption);
+	  if (status != TCL_OK) {
+	    return TCL_ERROR;
+	  }
+
+	  switch (bindingOption) {
+	    case binding_lazy:
+	      flags.binding = FFIDL_LOAD_BINDING_LAZY;
+	      break;
+	    case binding_now:
+	      flags.binding = FFIDL_LOAD_BINDING_NOW;
+	      break;
+	  }
+	  break;
+	}
+	case option_visibility:
+	{
+	  int visibilityOption;
+
+	  i++;
+	  int status = Tcl_GetIndexFromObj(interp, objv[i], visibilityOptions,
+					   "visibility", 0, &visibilityOption);
+	  if (status != TCL_OK) {
+	    return TCL_ERROR;
+	  }
+
+	  switch (visibilityOption) {
+	    case visibility_global:
+	      flags.visibility = FFIDL_LOAD_VISIBILITY_GLOBAL;
+	      break;
+	    case visibility_local:
+	      flags.visibility = FFIDL_LOAD_VISIBILITY_LOCAL;
+	      break;
+	  }
+	  break;
+	}
+	case option_break:
+	  /* Already handled above */
+	  break;
+      }
+  }
+
+  libraryObj = objv[i];
+  libraryName = Tcl_GetString(libraryObj);
+  handle = lib_lookup(client, libraryName, NULL);
+
+  if (handle != NULL) {
+    Tcl_AppendResult(interp, "library \"", libraryName, "\" already loaded", NULL);
+    return TCL_ERROR;
+  }
+
+  if (ffidlopen(interp, libraryObj, flags, &handle, &unload) != TCL_OK) {
+    return TCL_ERROR;
+  }
+
+  lib_define(client, libraryName, handle, unload);
+
+  return TCL_OK;
+}
+
 /* usage: ffidl-symbol library symbol -> address */
 static int tcl_ffidl_symbol(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
@@ -3080,7 +3266,8 @@ static int tcl_ffidl_symbol(ClientData clientData, Tcl_Interp *interp, int objc,
   handle = lib_lookup(client, library, NULL);
 
   if (handle == NULL) {
-    if (ffidlopen(interp, objv[library_ix], &handle, &unload) != TCL_OK) {
+    ffidl_load_flags flags = {FFIDL_LOAD_BINDING_NONE, FFIDL_LOAD_VISIBILITY_NONE};
+    if (ffidlopen(interp, objv[library_ix], flags, &handle, &unload) != TCL_OK) {
       return TCL_ERROR;
     }
     lib_define(client, library, handle, unload);
@@ -3212,6 +3399,7 @@ int Ffidl_Init(Tcl_Interp *interp)
   /* initialize commands */
   Tcl_CreateObjCommand(interp,"::ffidl::info", tcl_ffidl_info, (ClientData) client, NULL);
   Tcl_CreateObjCommand(interp,"::ffidl::typedef", tcl_ffidl_typedef, (ClientData) client, NULL);
+  Tcl_CreateObjCommand(interp,"::ffidl::library", tcl_ffidl_library, (ClientData) client, NULL);
   Tcl_CreateObjCommand(interp,"::ffidl::symbol", tcl_ffidl_symbol, (ClientData) client, NULL);
   Tcl_CreateObjCommand(interp,"::ffidl::stubsymbol", tcl_ffidl_stubsymbol, (ClientData) client, NULL);
   Tcl_CreateObjCommand(interp,"::ffidl::callout", tcl_ffidl_callout, (ClientData) client, NULL);

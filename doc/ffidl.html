@@ -292,9 +292,10 @@
             Procs</a>
         </h3>
         <p>
-          Ffidl defines six Tcl commands in the <b>Ffidl</b> package:
+          Ffidl defines seven Tcl commands in the <b>Ffidl</b> package:
           <a href="#::ffidl::callout">::ffidl::callout</a>,
           <a href="#::ffidl::callback">::ffidl::callback</a>,
+          <a href="#::ffidl::library">::ffidl::library</a>,
           <a href="#::ffidl::symbol">::ffidl::symbol</a>,
           <a href="#::ffidl::stubsymbol">::ffidl::stubsymbol</a>,
           <a href="#::ffidl::typedef">::ffidl::typedef</a>, and
@@ -355,6 +356,21 @@
             instead of the proc with the specified name.  The arguments are
             appended to the command prefix before evaluation.
             </p>
+          </dd>
+          <dt>
+            <a name="::ffidl::library"><b>::ffidl::library</b>
+              <i>?-binding now|lazy?</i>
+              <i>?-visibility local|global?</i>
+              <i>?--?</i>
+              <i>library</i></a>
+          </dt>
+          <dd>
+            <b>::ffidl::library</b> load a dynamically linked library of name <i>library</i>.
+            The option <i>-binding</i> determines whether the symbols bound on use or immediately.
+            The option <i>-visibility</i> determines whether the bound symbols are available to further loaded libraries.
+            Note that this options are not supported under all Ffidl
+            configurations.  When they are not specified, the platform's default
+            for the Ffidl configuration is used.
           </dd>
           <dt>
             <a name="::ffidl::symbol"><b>::ffidl::symbol</b> <i>library</i>
