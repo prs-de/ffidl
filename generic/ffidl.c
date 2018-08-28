@@ -603,6 +603,109 @@ static int Ffidl_GetPointerFromObj(Tcl_Interp *interp, Tcl_Obj *obj, void **ptr)
 #endif
 
 /*****************************************
+ * Due to an ancient libffi defect, not fixed due to compatibility concerns,
+ * return values for types smaller than the architecture's register size need to
+ * be treated specially.  This must only be done for return values of integral
+ * types, and not for arguments.  The recommended approach is to use a buffer of
+ * size ffi_arg for these values, disregarding the type size.
+ *
+ * The following macros select, for each architecture, the appropriate member of
+ * ffidl_value to use for a return value of a particular type.
+ */
+#define FFIDL_FITS_INTO_ARG(type) FFI_SIZEOF_ARG <= SIZEOF_##type
+
+#define FFIDL_RVALUE_TYPE_INT int
+#if USE_LIBFFI && !FFIDL_FITS_INTO_ARG(INT)
+#  define FFIDL_RVALUE_WIDENED_TYPE_INT ffi_arg
+#else
+#  define FFIDL_RVALUE_WIDENED_TYPE_INT FFIDL_RVALUE_TYPE_INT
+#endif
+
+#define FFIDL_RVALUE_TYPE_UINT8 UINT8_T
+#if USE_LIBFFI && !FFIDL_FITS_INTO_ARG(UINT8)
+#  define FFIDL_RVALUE_WIDENED_TYPE_UINT8 ffi_arg
+#else
+#  define FFIDL_RVALUE_WIDENED_TYPE_UINT8 FFIDL_RVALUE_TYPE_UINT8
+#endif
+
+#define FFIDL_RVALUE_TYPE_SINT8 SINT8_T
+#if USE_LIBFFI && !FFIDL_FITS_INTO_ARG(SINT8)
+#  define FFIDL_RVALUE_WIDENED_TYPE_SINT8 ffi_arg
+#else
+#  define FFIDL_RVALUE_WIDENED_TYPE_SINT8 FFIDL_RVALUE_TYPE_SINT8
+#endif
+
+#define FFIDL_RVALUE_TYPE_UINT16 UINT16_T
+#if USE_LIBFFI && !FFIDL_FITS_INTO_ARG(UINT16)
+#  define FFIDL_RVALUE_WIDENED_TYPE_UINT16 ffi_arg
+#else
+#  define FFIDL_RVALUE_WIDENED_TYPE_UINT16 FFIDL_RVALUE_TYPE_UINT16
+#endif
+
+#define FFIDL_RVALUE_TYPE_SINT16 SINT16_T
+#if USE_LIBFFI && !FFIDL_FITS_INTO_ARG(SINT16)
+#  define FFIDL_RVALUE_WIDENED_TYPE_SINT16 ffi_arg
+#else
+#  define FFIDL_RVALUE_WIDENED_TYPE_SINT16 FFIDL_RVALUE_TYPE_SINT16
+#endif
+
+#define FFIDL_RVALUE_TYPE_UINT32 UINT32_T
+#if USE_LIBFFI && !FFIDL_FITS_INTO_ARG(UINT32)
+#  define FFIDL_RVALUE_WIDENED_TYPE_UINT32 ffi_arg
+#else
+#  define FFIDL_RVALUE_WIDENED_TYPE_UINT32 FFIDL_RVALUE_TYPE_UINT32
+#endif
+
+#define FFIDL_RVALUE_TYPE_SINT32 SINT32_T
+#if USE_LIBFFI && !FFIDL_FITS_INTO_ARG(SINT32)
+#  define FFIDL_RVALUE_WIDENED_TYPE_SINT32 ffi_arg
+#else
+#  define FFIDL_RVALUE_WIDENED_TYPE_SINT32 FFIDL_RVALUE_TYPE_SINT32
+#endif
+
+#if HAVE_INT64
+#  define FFIDL_RVALUE_TYPE_UINT64 UINT64_T
+#  if USE_LIBFFI && !FFIDL_FITS_INTO_ARG(UINT64)
+#    define FFIDL_RVALUE_WIDENED_TYPE_UINT64 ffi_arg
+#  else
+#    define FFIDL_RVALUE_WIDENED_TYPE_UINT64 FFIDL_RVALUE_TYPE_UINT64
+#  endif
+
+#  define FFIDL_RVALUE_TYPE_SINT64 SINT64_T
+#  if USE_LIBFFI && !FFIDL_FITS_INTO_ARG(SINT64)
+#    define FFIDL_RVALUE_WIDENED_TYPE_SINT64 ffi_arg
+#  else
+#    define FFIDL_RVALUE_WIDENED_TYPE_SINT64 FFIDL_RVALUE_TYPE_SINT64
+#  endif
+#endif	/* HAVE_INT64 */
+
+/* Only integral types are affected, see above comment. */
+#define FFIDL_RVALUE_TYPE_FLOAT float
+#define FFIDL_RVALUE_WIDENED_TYPE_FLOAT FFIDL_RVALUE_TYPE_FLOAT
+#define FFIDL_RVALUE_TYPE_DOUBLE double
+#define FFIDL_RVALUE_WIDENED_TYPE_DOUBLE FFIDL_RVALUE_TYPE_DOUBLE
+#if HAVE_LONG_DOUBLE
+#  define FFIDL_RVALUE_TYPE_LONGDOUBLE long double
+#  define FFIDL_RVALUE_WIDENED_TYPE_LONGDOUBLE FFIDL_RVALUE_TYPE_LONGDOUBLE
+#endif
+
+#define FFIDL_RVALUE_TYPE_PTR void *
+#define FFIDL_RVALUE_WIDENED_TYPE_PTR FFIDL_RVALUE_TYPE_PTR
+
+#define FFIDL_RVALUE_TYPE_STRUCT void *
+#define FFIDL_RVALUE_WIDENED_TYPE_STRUCT FFIDL_RVALUE_TYPE_STRUCT
+
+#define QUOTECONCAT(a, b) a ## b
+#define CONCAT(a, b) QUOTECONCAT(a, b)
+#define FFIDL_RVALUE_TYPE(type)   CONCAT(FFIDL_RVALUE_TYPE_,   type)
+#define FFIDL_RVALUE_WIDENED_TYPE(type)  CONCAT(FFIDL_RVALUE_WIDENED_TYPE_,   type)
+/* Retrieve and cast a widened return value to the return value. */
+#define FFIDL_RVALUE_PEEK_UNWIDEN(type, rvalue) ((FFIDL_RVALUE_TYPE(type))*(FFIDL_RVALUE_WIDENED_TYPE(type) *)rvalue)
+/* Cast a return value to the return widened return value, put it at dst. */
+#define FFIDL_RVALUE_POKE_WIDENED(type, dst, src) (*(FFIDL_RVALUE_WIDENED_TYPE(type) *)dst = (FFIDL_RVALUE_TYPE(type))src)
+
+
+/*****************************************
  *
  * Type definitions for ffidl.
  */
@@ -641,6 +744,9 @@ union ffidl_value {
 #endif
   void *v_struct;
   void *v_pointer;
+#if USE_LIBFFI
+  ffi_arg v_ffi_arg;
+#endif
 };
 
 /*
@@ -1103,31 +1209,39 @@ static int type_parse(Tcl_Interp *interp, ffidl_client *client,
   }
   /* set arg value pointer */
   switch ((*typePtr)->typecode) {
-  case FFIDL_VOID:		*valuePtr = NULL; break; /* libffi depends on this being NULL on some platforms ! */
-  case FFIDL_INT:		*valuePtr = (void *)&valueArea->v_int; break;
-  case FFIDL_FLOAT:		*valuePtr = (void *)&valueArea->v_float; break;
-  case FFIDL_DOUBLE:		*valuePtr = (void *)&valueArea->v_double; break;
+  case FFIDL_VOID:
+    /* libffi depends on this being NULL on some platforms ! */
+    *valuePtr = NULL;
+    break;
+  case FFIDL_STRUCT:
+    /* Will be set to a pointer to the structure's contents. */
+    *valuePtr = NULL;
+    break;
+  case FFIDL_INT:
+  case FFIDL_FLOAT:
+  case FFIDL_DOUBLE:
 #if HAVE_LONG_DOUBLE
-  case FFIDL_LONGDOUBLE:	*valuePtr = (void *)&valueArea->v_longdouble; break;
+  case FFIDL_LONGDOUBLE:
 #endif
-  case FFIDL_UINT8:		*valuePtr = (void *)&valueArea->v_uint8; break;
-  case FFIDL_SINT8:		*valuePtr = (void *)&valueArea->v_sint8; break;
-  case FFIDL_UINT16:		*valuePtr = (void *)&valueArea->v_uint16; break;
-  case FFIDL_SINT16:		*valuePtr = (void *)&valueArea->v_sint16; break;
-  case FFIDL_UINT32:		*valuePtr = (void *)&valueArea->v_uint32; break;
-  case FFIDL_SINT32:		*valuePtr = (void *)&valueArea->v_sint32; break;
+  case FFIDL_UINT8:
+  case FFIDL_SINT8:
+  case FFIDL_UINT16:
+  case FFIDL_SINT16:
+  case FFIDL_UINT32:
+  case FFIDL_SINT32:
 #if HAVE_INT64
-  case FFIDL_UINT64:		*valuePtr = (void *)&valueArea->v_uint64; break;
-  case FFIDL_SINT64:		*valuePtr = (void *)&valueArea->v_sint64; break;
+  case FFIDL_UINT64:
+  case FFIDL_SINT64:
 #endif
-  case FFIDL_PTR:		*valuePtr = (void *)&valueArea->v_pointer; break;
-  case FFIDL_PTR_BYTE:		*valuePtr = (void *)&valueArea->v_pointer; break;
-  case FFIDL_PTR_OBJ:		*valuePtr = (void *)&valueArea->v_pointer; break;
-  case FFIDL_PTR_UTF8:		*valuePtr = (void *)&valueArea->v_pointer; break;
-  case FFIDL_PTR_UTF16:		*valuePtr = (void *)&valueArea->v_pointer; break;
-  case FFIDL_PTR_VAR:		*valuePtr = (void *)&valueArea->v_pointer; break;
-  case FFIDL_PTR_PROC:		*valuePtr = (void *)&valueArea->v_pointer; break;
-  case FFIDL_STRUCT:		*valuePtr = (void *)&valueArea->v_struct; break;
+  case FFIDL_PTR:
+  case FFIDL_PTR_BYTE:
+  case FFIDL_PTR_OBJ:
+  case FFIDL_PTR_UTF8:
+  case FFIDL_PTR_UTF16:
+  case FFIDL_PTR_VAR:
+  case FFIDL_PTR_PROC:
+    *valuePtr = (void *)valueArea;
+    break;
   default:
     sprintf(buff, "unknown ffidl_type.t = %d", (*typePtr)->typecode);
     Tcl_AppendResult(interp, buff, NULL);
@@ -2002,28 +2116,21 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
   /* convert return value */
   switch (cif->rtype->typecode) {
   case FFIDL_VOID:	break;
-  case FFIDL_INT:	*(int *)ret = (int)ltmp; break;
-  case FFIDL_FLOAT:	*(float *)ret = (float)dtmp; break;
-  case FFIDL_DOUBLE:	*(double *)ret = dtmp; break;
+  case FFIDL_INT:	FFIDL_RVALUE_POKE_WIDENED(INT, ret, ltmp); break;
+  case FFIDL_FLOAT:	FFIDL_RVALUE_POKE_WIDENED(FLOAT, ret, dtmp); break;
+  case FFIDL_DOUBLE:	FFIDL_RVALUE_POKE_WIDENED(DOUBLE, ret, dtmp); break;
 #if HAVE_LONG_DOUBLE
-  case FFIDL_LONGDOUBLE:*(long double *)ret = dtmp; break;
+  case FFIDL_UINT8:	FFIDL_RVALUE_POKE_WIDENED(LONGDOUBLE, ret, ltmp); break;
 #endif
-#ifdef POWERPC_DARWIN
-  case FFIDL_UINT8:	*(UINT32_T *)ret = (UINT8_T)ltmp; break;
-  case FFIDL_SINT8:	*(SINT32_T *)ret = (SINT8_T)ltmp; break;
-  case FFIDL_UINT16:	*(UINT32_T *)ret = (UINT16_T)ltmp; break;
-  case FFIDL_SINT16:	*(SINT32_T *)ret = (SINT16_T)ltmp; break;
-#else
-  case FFIDL_UINT8:	*(UINT8_T *)ret = (UINT8_T)ltmp; break;
-  case FFIDL_SINT8:	*(SINT8_T *)ret = (SINT8_T)ltmp; break;
-  case FFIDL_UINT16:	*(UINT16_T *)ret = (UINT16_T)ltmp; break;
-  case FFIDL_SINT16:	*(SINT16_T *)ret = (SINT16_T)ltmp; break;
-#endif
-  case FFIDL_UINT32:	*(UINT32_T *)ret = (UINT32_T)ltmp; break;
-  case FFIDL_SINT32:	*(SINT32_T *)ret = (SINT32_T)ltmp; break;
+  case FFIDL_UINT8:	FFIDL_RVALUE_POKE_WIDENED(UINT8, ret, ltmp); break;
+  case FFIDL_SINT8:	FFIDL_RVALUE_POKE_WIDENED(SINT8, ret, ltmp); break;
+  case FFIDL_UINT16:	FFIDL_RVALUE_POKE_WIDENED(UINT16, ret, ltmp); break;
+  case FFIDL_SINT16:	FFIDL_RVALUE_POKE_WIDENED(SINT16, ret, ltmp); break;
+  case FFIDL_UINT32:	FFIDL_RVALUE_POKE_WIDENED(UINT32, ret, ltmp); break;
+  case FFIDL_SINT32:	FFIDL_RVALUE_POKE_WIDENED(SINT32, ret, ltmp); break;
 #if HAVE_INT64
-  case FFIDL_UINT64:	*(UINT64_T *)ret = (UINT64_T)wtmp; break;
-  case FFIDL_SINT64:	*(SINT64_T *)ret = (SINT64_T)wtmp; break;
+  case FFIDL_UINT64:	FFIDL_RVALUE_POKE_WIDENED(UINT64, ret, wtmp); break;
+  case FFIDL_SINT64:	FFIDL_RVALUE_POKE_WIDENED(SINT64, ret, wtmp); break;
 #endif
   case FFIDL_STRUCT:
     {
@@ -2039,11 +2146,11 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
       break;
     }
 #if FFIDL_POINTER_IS_LONG
-  case FFIDL_PTR:	*(void **)ret = (void *)ltmp; break;
+  case FFIDL_PTR:	FFIDL_RVALUE_POKE_WIDENED(PTR, ret, ltmp); break;
 #else
-  case FFIDL_PTR:	*(void **)ret = (void *)wtmp; break;
+  case FFIDL_PTR:	FFIDL_RVALUE_POKE_WIDENED(PTR, ret, wtmp); break;
 #endif
-  case FFIDL_PTR_OBJ:	*(Tcl_Obj **)ret = obj; break;
+  case FFIDL_PTR_OBJ:	FFIDL_RVALUE_POKE_WIDENED(PTR, ret, obj); break;
   default:
     Tcl_ResetResult(interp);
     sprintf(buff, "unimplemented type for callback return: %d", cif->rtype->typecode);
@@ -2907,34 +3014,27 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
   /* convert return value */
   switch (cif->rtype->typecode) {
   case FFIDL_VOID:	break;
-  case FFIDL_INT:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)cif->rvalue.v_int)); break;
-  case FFIDL_FLOAT:	Tcl_SetObjResult(interp, Tcl_NewDoubleObj((double)cif->rvalue.v_float)); break;
-  case FFIDL_DOUBLE:	Tcl_SetObjResult(interp, Tcl_NewDoubleObj((double)cif->rvalue.v_double)); break;
+  case FFIDL_INT:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(INT, cif->ret))); break;
+  case FFIDL_FLOAT:	Tcl_SetObjResult(interp, Tcl_NewDoubleObj((double)FFIDL_RVALUE_PEEK_UNWIDEN(FLOAT, cif->ret))); break;
+  case FFIDL_DOUBLE:	Tcl_SetObjResult(interp, Tcl_NewDoubleObj((double)FFIDL_RVALUE_PEEK_UNWIDEN(DOUBLE, cif->ret))); break;
 #if HAVE_LONG_DOUBLE
-  case FFIDL_LONGDOUBLE:Tcl_SetObjResult(interp, Tcl_NewDoubleObj((double)cif->rvalue.v_longdouble)); break;
+  case FFIDL_LONGDOUBLE:Tcl_SetObjResult(interp, Tcl_NewDoubleObj((double)FFIDL_RVALUE_PEEK_UNWIDEN(LONGDOUBLE, cif->ret))); break;
 #endif
-#ifdef POWERPC_DARWIN
-  case FFIDL_UINT8:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)cif->rvalue.v_uint32)); break;
-  case FFIDL_SINT8:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)cif->rvalue.v_sint32)); break;
-  case FFIDL_UINT16:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)cif->rvalue.v_uint32)); break;
-  case FFIDL_SINT16:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)cif->rvalue.v_sint32)); break;
-#else
-  case FFIDL_UINT8:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)cif->rvalue.v_uint8)); break;
-  case FFIDL_SINT8:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)cif->rvalue.v_sint8)); break;
-  case FFIDL_UINT16:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)cif->rvalue.v_uint16)); break;
-  case FFIDL_SINT16:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)cif->rvalue.v_sint16)); break;
-#endif
-  case FFIDL_UINT32:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)cif->rvalue.v_uint32)); break;
-  case FFIDL_SINT32:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)cif->rvalue.v_sint32)); break;
+  case FFIDL_UINT8:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(UINT8, cif->ret))); break;
+  case FFIDL_SINT8:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(SINT8, cif->ret))); break;
+  case FFIDL_UINT16:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(UINT16, cif->ret))); break;
+  case FFIDL_SINT16:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(SINT16, cif->ret))); break;
+  case FFIDL_UINT32:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(UINT32, cif->ret))); break;
+  case FFIDL_SINT32:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(SINT32, cif->ret))); break;
 #if HAVE_INT64
-  case FFIDL_UINT64:	Tcl_SetObjResult(interp, Ffidl_NewInt64Obj((Ffidl_Int64)cif->rvalue.v_uint64)); break;
-  case FFIDL_SINT64:	Tcl_SetObjResult(interp, Ffidl_NewInt64Obj((Ffidl_Int64)cif->rvalue.v_sint64)); break;
+  case FFIDL_UINT64:	Tcl_SetObjResult(interp, Ffidl_NewInt64Obj((Ffidl_Int64)FFIDL_RVALUE_PEEK_UNWIDEN(UINT64, cif->ret))); break;
+  case FFIDL_SINT64:	Tcl_SetObjResult(interp, Ffidl_NewInt64Obj((Ffidl_Int64)FFIDL_RVALUE_PEEK_UNWIDEN(SINT64, cif->ret))); break;
 #endif
   case FFIDL_STRUCT:	Tcl_SetObjResult(interp, obj); Tcl_DecrRefCount(obj); break;
-  case FFIDL_PTR:	Tcl_SetObjResult(interp, Ffidl_NewPointerObj((long)cif->rvalue.v_pointer)); break;
-  case FFIDL_PTR_OBJ:	Tcl_SetObjResult(interp, (Tcl_Obj *)cif->rvalue.v_pointer); break;
-  case FFIDL_PTR_UTF8:	Tcl_SetObjResult(interp, Tcl_NewStringObj(cif->rvalue.v_pointer, -1)); break;
-  case FFIDL_PTR_UTF16:	Tcl_SetObjResult(interp, Tcl_NewUnicodeObj(cif->rvalue.v_pointer, -1)); break;
+  case FFIDL_PTR:	Tcl_SetObjResult(interp, Ffidl_NewPointerObj(FFIDL_RVALUE_PEEK_UNWIDEN(PTR, cif->ret))); break;
+  case FFIDL_PTR_OBJ:	Tcl_SetObjResult(interp, (Tcl_Obj *)FFIDL_RVALUE_PEEK_UNWIDEN(PTR, cif->ret)); break;
+  case FFIDL_PTR_UTF8:	Tcl_SetObjResult(interp, Tcl_NewStringObj(FFIDL_RVALUE_PEEK_UNWIDEN(PTR, cif->ret), -1)); break;
+  case FFIDL_PTR_UTF16:	Tcl_SetObjResult(interp, Tcl_NewUnicodeObj(FFIDL_RVALUE_PEEK_UNWIDEN(PTR, cif->ret), -1)); break;
   default:
     sprintf(buff, "Invalid return type: %d", cif->rtype->typecode);
     Tcl_AppendResult(interp, buff, NULL);
