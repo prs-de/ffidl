@@ -123,6 +123,13 @@ static void *tkStubsPtr, *tkPlatStubsPtr, *tkIntStubsPtr, *tkIntPlatStubsPtr, *t
 #define HAVE_CLOSURES FFI_CLOSURES
 #endif
 
+#if defined(HAVE_LONG_DOUBLE) && defined(HAVE_LONG_DOUBLE_WIDER)
+/*
+ * Cannot support wider long doubles because they don't fit in Tcl_Obj.
+ */
+#  undef HAVE_LONG_DOUBLE
+#endif
+
 #define lib_type_void	&ffi_type_void
 #define lib_type_uint8	&ffi_type_uint8
 #define lib_type_sint8	&ffi_type_sint8

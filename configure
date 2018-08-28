@@ -6931,6 +6931,47 @@ _ACEOF
 
 
 
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for long double" >&5
+$as_echo_n "checking for long double... " >&6; }
+if ${ac_cv_type_long_double+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test "$GCC" = yes; then
+       ac_cv_type_long_double=yes
+     else
+       cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+/* The Stardent Vistra knows sizeof (long double), but does
+		 not support it.  */
+	      long double foo = 0.0L;
+int
+main ()
+{
+static int test_array [1 - 2 * !(/* On Ultrix 4.3 cc, long double is 4 and double is 8.  */
+	      sizeof (double) <= sizeof (long double))];
+test_array [0] = 0;
+return test_array [0];
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ac_cv_type_long_double=yes
+else
+  ac_cv_type_long_double=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+     fi
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_type_long_double" >&5
+$as_echo "$ac_cv_type_long_double" >&6; }
+  if test $ac_cv_type_long_double = yes; then
+
+$as_echo "#define HAVE_LONG_DOUBLE 1" >>confdefs.h
+
+  fi
+
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for long double with more range or precision than double" >&5
 $as_echo_n "checking for long double with more range or precision than double... " >&6; }
@@ -6982,13 +7023,6 @@ $as_echo "$ac_cv_type_long_double_wider" >&6; }
 $as_echo "#define HAVE_LONG_DOUBLE_WIDER 1" >>confdefs.h
 
   fi
-
-    ac_cv_c_long_double=$ac_cv_type_long_double_wider
-    if test $ac_cv_c_long_double = yes; then
-
-$as_echo "#define HAVE_LONG_DOUBLE 1" >>confdefs.h
-
-    fi
 
 # The cast to long int works around a bug in the HP C Compiler
 # version HP92453-01 B.11.11.23709.GP, which incorrectly rejects
