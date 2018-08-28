@@ -528,18 +528,20 @@ EXTERN int   Ffidl_Init (Tcl_Interp * interp);
 
 #ifdef ALIGNOF_INT64
 #define HAVE_INT64	1
-
-#ifdef TCL_WIDE_INT_IS_LONG
-#define HAVE_WIDE_INT 0
-#define Tcl_NewWideIntOrLong Tcl_NewLongObj
-#define Tcl_GetWideIntOrLongFromObj Tcl_GetLongFromObj
-#define Tcl_WideIntOrLong long
-#else
-#define HAVE_WIDE_INT 1
-#define Tcl_NewWideIntOrLong Tcl_NewWideIntObj
-#define Tcl_GetWideIntOrLongFromObj Tcl_GetWideIntFromObj
-#define Tcl_WideIntOrLong Tcl_WideInt
 #endif
+
+#if defined(HAVE_INT64)
+#  if defined(TCL_WIDE_INT_IS_LONG)
+#    define HAVE_WIDE_INT		0
+#    define Ffidl_NewInt64Obj		Tcl_NewLongObj
+#    define Ffidl_GetInt64FromObj	Tcl_GetLongFromObj
+#    define Ffidl_Int64			long
+#  else
+#    define HAVE_WIDE_INT		1
+#    define Ffidl_NewInt64Obj		Tcl_NewWideIntObj
+#    define Ffidl_GetInt64FromObj	Tcl_GetWideIntFromObj
+#    define Ffidl_Int64			Tcl_WideInt
+#  endif
 #endif
 
 /*
@@ -1138,7 +1140,7 @@ static int type_format(Tcl_Interp *interp, ffidl_type *type, int *offset)
   case FFIDL_PTR_VAR:
   case FFIDL_PTR_PROC:
     switch (type->size) {
-    case sizeof(Tcl_WideIntOrLong):
+    case sizeof(Ffidl_Int64):
       *offset += 8;
       Tcl_AppendResult(interp, FFIDL_WIDEINT_FORMAT, NULL);
       return TCL_OK;
@@ -1775,7 +1777,7 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
   long ltmp;
   double dtmp;
 #if HAVE_INT64
-  Tcl_WideIntOrLong wtmp;
+  Ffidl_Int64 wtmp;
 #endif
   /* test for valid scope */
   if (interp == NULL) {
@@ -1831,10 +1833,10 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
       break;
 #if HAVE_INT64
     case FFIDL_UINT64:
-      objv[i] = Tcl_NewWideIntOrLong((Tcl_WideIntOrLong)(*(UINT64_T *)argp));
+      objv[i] = Ffidl_NewInt64Obj((Ffidl_Int64)(*(UINT64_T *)argp));
       break;
     case FFIDL_SINT64:
-      objv[i] = Tcl_NewWideIntOrLong((Tcl_WideIntOrLong)(*(SINT64_T *)argp));
+      objv[i] = Ffidl_NewInt64Obj((Ffidl_Int64)(*(SINT64_T *)argp));
       break;
 #endif
     case FFIDL_STRUCT:
@@ -1897,13 +1899,13 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
 	Tcl_AppendResult(interp, ", converting callback return value", NULL);
 	goto escape;
       }
-      wtmp = (Tcl_WideIntOrLong)dtmp;
+      wtmp = (Ffidl_Int64)dtmp;
       if (dtmp != wtmp)
-	if (Tcl_GetWideIntOrLongFromObj(interp, obj, &wtmp) == TCL_ERROR) {
+	if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
 	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
 	  goto escape;
 	}
-    } else if (Tcl_GetWideIntOrLongFromObj(interp, obj, &wtmp) == TCL_ERROR) {
+    } else if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
       Tcl_AppendResult(interp, ", converting callback return value", NULL);
       goto escape;
     }
@@ -2005,7 +2007,7 @@ static void callback_callback(void *user_data, va_alist alist)
   long ltmp;
   double dtmp;
 #if HAVE_INT64
-  Tcl_WideIntOrLong wtmp;
+  Ffidl_Int64 wtmp;
 #endif
   /* test for valid scope */
   if (interp == NULL) {
@@ -2070,10 +2072,10 @@ static void callback_callback(void *user_data, va_alist alist)
       break;
 #if HAVE_INT64
     case FFIDL_UINT64:
-      objv[i] = Tcl_NewWideIntOrLong((long)va_arg_uint64(alist));
+      objv[i] = Ffidl_NewInt64Obj((long)va_arg_uint64(alist));
       break;
     case FFIDL_SINT64:
-      objv[i] = Tcl_NewWideIntOrLong((long)va_arg_sint64(alist));
+      objv[i] = Ffidl_NewInt64Obj((long)va_arg_sint64(alist));
       break;
 #endif
     case FFIDL_STRUCT:
@@ -2139,13 +2141,13 @@ static void callback_callback(void *user_data, va_alist alist)
 	Tcl_AppendResult(interp, ", converting callback return value", NULL);
 	goto escape;
       }
-      wtmp = (Tcl_WideIntOrLong)dtmp;
+      wtmp = (Ffidl_Int64)dtmp;
       if (dtmp != wtmp)
-	if (Tcl_GetWideIntOrLongFromObj(interp, obj, &wtmp) == TCL_ERROR) {
+	if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
 	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
 	  goto escape;
 	}
-    } else if (Tcl_GetWideIntOrLongFromObj(interp, obj, &wtmp) == TCL_ERROR) {
+    } else if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
       Tcl_AppendResult(interp, ", converting callback return value", NULL);
       goto escape;
     }
@@ -2638,7 +2640,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
   long ltmp;
   double dtmp;
 #if HAVE_INT64
-  Tcl_WideIntOrLong wtmp;
+  Ffidl_Int64 wtmp;
 #endif
   Tcl_Obj *obj = NULL;
   char buff[128];
@@ -2668,12 +2670,13 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
       if (obj->typePtr == ffidl_double_ObjType) {
 	if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR)
 	  goto cleanup;
-	wtmp = (Tcl_WideIntOrLong)dtmp;
+	wtmp = (Ffidl_Int64)dtmp;
 	if (dtmp != wtmp)
-	  if (Tcl_GetWideIntOrLongFromObj(interp, obj, &wtmp) == TCL_ERROR)
+	  if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR)
 	    goto cleanup;
-      } else if (Tcl_GetWideIntOrLongFromObj(interp, obj, &wtmp) == TCL_ERROR)
+      } else if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
 	goto cleanup;
+      }
 #endif
     } else if (cif->atypes[i]->class & FFIDL_GETDOUBLE) {
       if (obj->typePtr == ffidl_int_ObjType) {
@@ -2858,8 +2861,8 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
   case FFIDL_UINT32:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)cif->rvalue.v_uint32)); break;
   case FFIDL_SINT32:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)cif->rvalue.v_sint32)); break;
 #if HAVE_INT64
-  case FFIDL_UINT64:	Tcl_SetObjResult(interp, Tcl_NewWideIntOrLong((Tcl_WideIntOrLong)cif->rvalue.v_uint64)); break;
-  case FFIDL_SINT64:	Tcl_SetObjResult(interp, Tcl_NewWideIntOrLong((Tcl_WideIntOrLong)cif->rvalue.v_sint64)); break;
+  case FFIDL_UINT64:	Tcl_SetObjResult(interp, Ffidl_NewInt64Obj((Ffidl_Int64)cif->rvalue.v_uint64)); break;
+  case FFIDL_SINT64:	Tcl_SetObjResult(interp, Ffidl_NewInt64Obj((Ffidl_Int64)cif->rvalue.v_sint64)); break;
 #endif
   case FFIDL_STRUCT:	Tcl_SetObjResult(interp, obj); Tcl_DecrRefCount(obj); break;
   case FFIDL_PTR:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)cif->rvalue.v_pointer)); break;
