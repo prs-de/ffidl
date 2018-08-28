@@ -296,40 +296,31 @@ static void *tkStubsPtr, *tkPlatStubsPtr, *tkIntStubsPtr, *tkIntPlatStubsPtr, *t
 #endif
 #endif
 
-#if !defined(USE_TCL_DLOPEN) && !defined(USE_TCL_LOADFILE)
 /*****************************************
  *				  
  * ffidlopen, ffidlsym, and ffidlclose abstractions
  * of dlopen(), dlsym(), and dlclose().
  */
+#if defined(USE_TCL_DLOPEN)
+
+typedef Tcl_LoadHandle ffidl_LoadHandle;
+typedef Tcl_FSUnloadFileProc *ffidl_UnloadProc;
+
+#elif defined(USE_TCL_LOADFILE)
+
+typedef Tcl_LoadHandle ffidl_LoadHandle;
+typedef Tcl_FSUnloadFileProc *ffidl_UnloadProc;
+
+#else
+
+typedef void *ffidl_LoadHandle;
+typedef void *ffidl_UnloadProc;
+
 #ifdef __WIN32__
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #undef WIN32_LEAN_AND_MEAN
-
-static void *ffidlopen(char *library, const char **error)
-{
-  void *handle = LoadLibraryA(library);
-  *error = handle ? NULL : "???";
-  return handle;
-}
-static void *ffidlsym(void *handle, char *name, const char **error)
-{
- /*
-  * Ack, what about data?  I guess they're not particular,
-  * some windows headers declare data as dll import, eg
-  * vc98/include/math.h: _CRTIMP extern double _HUGE;
-  */
-  void *address = GetProcAddress(handle, name);
-  *error = address ? NULL : "???";
-  return address;
-}
-static void ffidlclose(void *handle, const char **error)
-{
-  FreeLibrary(handle);
-  *error = NULL;
-}
 
 #else
 
@@ -350,29 +341,157 @@ static void ffidlclose(void *handle, const char **error)
 #ifndef RTLD_GLOBAL
 #   define RTLD_GLOBAL 0
 #endif
+#endif	/* NO_DLFCN_H */
+#endif	/* __WIN32__ */
+#endif	/* USE_TCL_DLOPEN */
 
-static void *ffidlopen(char *library, const char **error)
+static int ffidlsym(Tcl_Interp *interp,
+		    ffidl_LoadHandle handle,
+		    Tcl_Obj *symbolNameObj,
+		    void **address)
 {
-  void *handle = dlopen(library, RTLD_NOW | RTLD_GLOBAL);
-  *error = dlerror();
-  return handle;
-}
-static void *ffidlsym(void *handle, char *name, const char **error)
-{
-  void *address = dlsym(handle, name);
-  *error = dlerror();
-  return address;
-}
-static void ffidlclose(void *handle, const char **error)
-{
-  dlclose(handle);
-  *error = dlerror();
+  int status = TCL_OK;
+  char *error = NULL;
+  char *symbolName = NULL;
+  char *nativeSymbolName = NULL;
+  Tcl_DString ds;
+
+  symbolName = Tcl_GetString(symbolNameObj);
+  nativeSymbolName = Tcl_UtfToExternalDString(NULL, symbolName, -1, &ds);
+#if defined(USE_TCL_DLOPEN)
+  *address = TclpFindSymbol(interp, (Tcl_LoadHandle)handle, nativeSymbolName);
+  if (!*address) {
+    error = "TclpFindSymbol() failed";
+    status = TCL_ERROR;
+  }
+#elif defined(USE_TCL_LOADFILE)
+  *address = Tcl_FindSymbol(interp, (Tcl_LoadHandle)handle, nativeSymbolName);
+  if (!*address) {
+    error = "Tcl_FindSymbol() failed";
+    status = TCL_ERROR;
+  }
+#else
+#ifdef __WIN32__
+  /*
+   * Ack, what about data?  I guess they're not particular,
+   * some windows headers declare data as dll import, eg
+   * vc98/include/math.h: _CRTIMP extern double _HUGE;
+   */
+  *address = GetProcAddress(handle, name);
+  if (!*address) {
+    error = "???";
+    status = TCL_ERROR;
+  }
+#else
+  *address = dlsym(handle, name);
+  error = dlerror();
+  if (error) {
+    status = TCL_ERROR;
+  }
+#endif
+  if (status != TCL_OK) {
+    /*
+     * Some platforms still add an underscore to the beginning of symbol
+     * names.  If we can't find a name without an underscore, try again
+     * with the underscore.
+     */
+    error = NULL;
+    Tcl_Obj *newSymbolNameObj = Tcl_NewStringObj("_", 1);
+    Tcl_AppendObjToObj(newSymbolNameObj, symbolNameObj);
+    Tcl_IncrRefCount(newSymbolNameObj);
+    status = ffidlsym(interp, handle, newSymbolNameObj, address);
+    Tcl_DecrRefCount(newSymbolNameObj);
+  }
+#endif
+
+  Tcl_DStringFree(&ds);
+
+  if (error) {
+    Tcl_AppendResult(interp, "couldn't find symbol \"", symbolName, "\" : ", error, NULL);
+  }
+
+  return status;
 }
 
+static int ffidlopen(Tcl_Interp *interp,
+		     Tcl_Obj *libNameObj,
+		     ffidl_LoadHandle *handle,
+		     ffidl_UnloadProc *unload)
+{
+  int status = TCL_OK;
+#if defined(USE_TCL_DLOPEN)
+  status = TclpDlopen(interp, libNameObj, handle, unload);
+#elif defined(USE_TCL_LOADFILE)
+  if (Tcl_LoadFile(interp, libNameObj, NULL, 0, NULL, handle) != TCL_OK) {
+    status = TCL_ERROR;
+  }
+  *unload = NULL;
+#else
+  Tcl_DString ds;
+  char *libraryName = NULL;
+  char *nativeLibraryName = NULL;
+  char *error = NULL;
+
+  libraryName = Tcl_GetString(libNameObj);
+  nativeLibraryName = Tcl_UtfToExternalDString(NULL, libNameObj, -1, &ds);
+  nativeLibraryName = strlen(nativeLibraryName) ? nativeLibraryName : NULL;
+
+#ifdef __WIN32__
+  *handle = LoadLibraryA(nativeLibraryName);
+  error = *handle ? NULL : "???";
+#else
+  *handle = dlopen(nativeLibraryName, RTLD_NOW | RTLD_GLOBAL);
+  error = dlerror();
+#endif
+
+  if (*handle == NULL) {
+    Tcl_AppendResult(interp, "couldn't load file \"", libraryName, "\" : ",
+		     error, (char *) NULL);
+    status = TCL_ERROR;
+  } else {
+    *unload = NULL;
+  }
+
+  Tcl_DStringFree(&ds);
+#endif
+
+  return status;
+}
+
+static int ffidlclose(Tcl_Interp *interp,
+		      char *libraryName,
+		      ffidl_LoadHandle handle,
+		      ffidl_UnloadProc unload)
+{
+  int status = TCL_OK;
+  const char *error = NULL;
+#if defined(USE_TCL_DLOPEN)
+  /* NOTE: no error reporting. */
+  ((Tcl_FSUnloadFileProc*)unload)((Tcl_LoadHandle)handle);
+#elif defined(USE_TCL_LOADFILE)
+  status = Tcl_FSUnloadFile(interp, (Tcl_LoadHandle)handle);
+  if (status != TCL_OK) {
+    error = Tcl_GetStringResult(interp);
+  }
+#else
+#ifdef __WIN32__
+  if (!FreeLibrary(handle)) {
+    status = TCL_ERROR;
+    error = "???";
+  }
+#else
+  if (dlclose(handle)) {
+    status = TCL_ERROR;
+    error = dlerror();
+  }
 #endif
 #endif
-
-#endif /* USE_TCL_DLOPEN */
+  if (status != TCL_OK) {
+    Tcl_AppendResult(interp, "couldn't unload lib \"", libraryName, "\": ",
+		     error, (char *) NULL);
+  }
+  return status;
+}
 
 /*****************************************
  *				  
@@ -582,6 +701,7 @@ typedef struct ffidl_cif ffidl_cif;
 typedef struct ffidl_callout ffidl_callout;
 typedef struct ffidl_callback ffidl_callback;
 typedef struct ffidl_closure ffidl_closure;
+typedef struct ffidl_lib ffidl_lib;
 
 /*
  * The ffidl_value structure contains a union used
@@ -709,6 +829,11 @@ struct ffidl_callback {
   ffidl_closure closure;
 };
 #endif
+
+struct ffidl_lib {
+  ffidl_LoadHandle loadHandle;
+  ffidl_UnloadProc unloadProc;
+};
 
 /*****************************************
  *
@@ -1495,19 +1620,24 @@ static void callout_call(ffidl_callout *callout)
 /* define a new lib */
 static void lib_define(ffidl_client *client, char *lname, void *handle, void* unload)
 {
-  void** libentry = (void**)Tcl_Alloc(2*sizeof(void*));
-  libentry[0] = handle; libentry[1] = unload; 
+  ffidl_lib *libentry = (ffidl_lib *)Tcl_Alloc(sizeof(ffidl_lib));
+  libentry->loadHandle = handle;
+  libentry->unloadProc = unload;
   entry_define(&client->libs,lname,libentry);
 }
 /* lookup an existing type */
-static void *lib_lookup(ffidl_client *client, char *lname, void** unload)
+static ffidl_LoadHandle lib_lookup(ffidl_client *client,
+				   char *lname,
+				   ffidl_UnloadProc *unload)
 {
-  void** libentry = entry_lookup(&client->libs,lname);
+  ffidl_lib *libentry = entry_lookup(&client->libs,lname);
   if (libentry) {
-      if (unload) *unload = libentry[1];
-      return libentry[0];
+    if (unload) {
+      *unload = libentry->unloadProc;
+    }
+    return libentry->loadHandle;
   } else {
-      return NULL;
+    return NULL;
   }
 }
 #if USE_CALLBACKS
@@ -2070,16 +2200,10 @@ static void client_delete(ClientData clientData, Tcl_Interp *interp)
 
   /* free all libs */
   for (entry = Tcl_FirstHashEntry(&client->libs, &search); entry != NULL; entry = Tcl_NextHashEntry(&search)) {
-    void **libentry = Tcl_GetHashValue(entry);
-#if defined(USE_TCL_DLOPEN)
-    ((Tcl_FSUnloadFileProc*)libentry[1])((Tcl_LoadHandle)libentry[0]);
-#elif defined(USE_TCL_LOADFILE)
-    Tcl_FSUnloadFile(interp, (Tcl_LoadHandle)libentry[0]);
-#else
-    const char *error;
-    ffidlclose(libentry[0], &error);
-#endif
-    Tcl_Free((char*)libentry);
+    char *libraryName = Tcl_GetHashKey(&client->libs, entry);
+    ffidl_lib *libentry = Tcl_GetHashValue(entry);
+    ffidlclose(interp, libraryName, libentry->loadHandle, libentry->unloadProc);
+    Tcl_Free((void *)libentry);
   }
 
   /* free hashtables */
@@ -2937,16 +3061,10 @@ static int tcl_ffidl_symbol(ClientData clientData, Tcl_Interp *interp, int objc,
     nargs
   };
 
-  char *library, *symbol, *native;
-  const char *error;
+  char *library;
   void *address;
-  Tcl_DString ds;
-#if defined(USE_TCL_DLOPEN) || defined(USE_TCL_LOADFILE)
-  Tcl_LoadHandle handle;
-  Tcl_FSUnloadFileProc *unload;
-#else
-  void *handle, *unload;
-#endif
+  ffidl_LoadHandle handle;
+  ffidl_UnloadProc unload;
   ffidl_client *client = (ffidl_client *)clientData;
 
   if (objc != nargs) {
@@ -2958,60 +3076,20 @@ static int tcl_ffidl_symbol(ClientData clientData, Tcl_Interp *interp, int objc,
   handle = lib_lookup(client, library, NULL);
 
   if (handle == NULL) {
-#if defined(USE_TCL_DLOPEN)
-    if (TclpDlopen(interp, objv[library_ix], &handle, &unload) != TCL_OK)
-        return TCL_ERROR;
-#elif defined(USE_TCL_LOADFILE)
-    if (Tcl_LoadFile(interp, objv[library_ix], NULL ,0 ,NULL ,&handle) != TCL_OK)
-        return TCL_ERROR;
-    unload = NULL;
-#else
-    native = Tcl_UtfToExternalDString(NULL, library, -1, &ds);
-    handle = ffidlopen(strlen(native)?native:NULL, &error);
-    Tcl_DStringFree(&ds);
-    if (handle == NULL) {
-      Tcl_AppendResult(interp, "couldn't load file \"", library, "\" : ", error, (char *) NULL);
+    if (ffidlopen(interp, objv[library_ix], &handle, &unload) != TCL_OK) {
       return TCL_ERROR;
     }
-    unload = NULL;
-#endif
     lib_define(client, library, handle, unload);
   }
 
-  symbol = Tcl_GetString(objv[symbol_ix]);
-  native = Tcl_UtfToExternalDString(NULL, symbol, -1, &ds);
-#if defined(USE_TCL_DLOPEN)
-  address = TclpFindSymbol(interp, (Tcl_LoadHandle)handle, native);
-  error = address ? NULL : "TclpFindSymbol() failed";
-#elif defined(USE_TCL_LOADFILE)
-  address = Tcl_FindSymbol(interp, (Tcl_LoadHandle)handle, native);
-  error = address ? NULL : "Tcl_FindSymbol() failed";
-#else
-  address = ffidlsym(handle, native, &error);	
-  if (error) {
-  /* 
-   * Some platforms still add an underscore to the beginning of symbol
-   * names.  If we can't find a name without an underscore, try again
-   * with the underscore.
-   */
-    Tcl_DString newName;
-    Tcl_DStringInit(&newName);
-    Tcl_DStringAppend(&newName, "_", 1);
-    native = Tcl_DStringAppend(&newName, native, -1);
-    address = ffidlsym(handle, native, &error);
-    Tcl_DStringFree(&newName);
-  }
-#endif
-  Tcl_DStringFree(&ds);
-
-  if (error) {
-    Tcl_AppendResult(interp, "couldn't find symbol \"", symbol, "\" : ", error, NULL);
+  if (ffidlsym(interp, handle, objv[symbol_ix], &address) != TCL_OK) {
     return TCL_ERROR;
   }
 
   Tcl_SetObjResult(interp, Tcl_NewLongObj((long)address));
   return TCL_OK;
 }
+
 /* usage: ffidl-stubsymbol library stubstable symbolnumber -> address */
 static int tcl_ffidl_stubsymbol(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
