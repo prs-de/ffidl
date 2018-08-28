@@ -1583,7 +1583,8 @@ static int cif_prep(ffidl_cif *cif)
 #if FFI_NATIVE_RAW_API
   if (cif->use_raw_api) {
     /* rewrite cif->args[i] into a stack image */
-    int offset = 0, bytes = ffi_raw_size(&cif->lib_cif);
+    ptrdiff_t offset = 0;
+    size_t bytes = ffi_raw_size(&cif->lib_cif);
     /* fprintf(stderr, "using raw api for %d args\n", cif->argc); */
     for (i = 0; i < cif->argc; i += 1) {
       /* set args[i] to args[0]+offset */
@@ -1987,7 +1988,7 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
     void *argp;
 #if FFI_NATIVE_RAW_API
     if (cif->use_raw_api) {
-      int offset = ((int)cif->args[i])-((int)cif->args[0]);
+      ptrdiff_t offset = cif->args[i] - cif->args[0];
       argp = (void *)(((char *)args)+offset);
     } else {
       argp = args[i];
