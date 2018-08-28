@@ -1,14 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <meta charset="utf8">
-    <link rev="MADE" href="mailto:rec@elf.org">
+    <meta charset="utf-8">
+    <link rel="author" href="mailto:rec@elf.org">
     <link rel="stylesheet" href="styles.css">
     <meta name="GENERATOR" content="Roger E Critchlow Jr">
     <meta name="DESCRIPTION" content="Tcl/Tk Foreign Function Call Extension">
-    <title>
-      Ffidl
-    </title>
+    <title>Ffidl</title>
   </head>
   <body>
     <header>
@@ -19,92 +17,46 @@
       <nav>
         <ul>
           <li>
-            <h2>
-              <a href="#commands">Commands, et al.</a>
-            </h2>
+            <h3>
+              <a href="#introduction">Introduction</a>
+            </h3>
           </li>
-          <li style="list-style: none; display: inline">
+          <li>
+            <h3>
+              <a href="#changelog">Changelog</a>
+            </h3>
+          </li>
+          <li>
+            <h3>
+              <a href="#commands">Commands, et al.</a>
+            </h3>
             <ul>
-              <li>
-                <a href="#::ffidl::callout">::ffidl::callout</a>
-              </li>
-              <li>
-                <a href="#::ffidl::callback">::ffidl::callback</a>
-              </li>
-              <li>
-                <a href="#::ffidl::symbol">::ffidl::symbol</a>
-              </li>
-              <li>
-                <a href="#::ffidl::stubsymbol">::ffidl::stubsymbol</a>
-              </li>
-              <li>
-                <a href="#::ffidl::typedef">::ffidl::typedef</a>
-              </li>
-              <li>
-                <a href="#::ffidl::info">::ffidl::info</a>
-              </li>
-              <li>
-                <a href="#::ffidl_pointer_pun">::ffidl_pointer_pun</a>
-              </li>
-              <li>
-                <a href="#::ffidl::find-lib">::ffidl::find-lib</a>
-              </li>
-              <li>
-                <a href="#::ffidl::find-type">::ffidl::find-type</a>
-              </li>
+              <li><a href="#::ffidl::callout">::ffidl::callout</a></li>
+              <li><a href="#::ffidl::callback">::ffidl::callback</a></li>
+              <li><a href="#::ffidl::symbol">::ffidl::symbol</a></li>
+              <li><a href="#::ffidl::stubsymbol">::ffidl::stubsymbol</a></li>
+              <li><a href="#::ffidl::typedef">::ffidl::typedef</a></li>
+              <li><a href="#::ffidl::info">::ffidl::info</a></li>
+              <li><a href="#::ffidl_pointer_pun">::ffidl_pointer_pun</a></li>
+              <li><a href="#::ffidl::find-lib">::ffidl::find-lib</a></li>
+              <li><a href="#::ffidl::find-type">::ffidl::find-type</a></li>
             </ul>
           </li>
-          <li>
-            <h2>
-              <a href="#types">Types</a>
-            </h2>
-          </li>
-          <li>
-            <h2>
-              <a href="#install">Install</a>
-            </h2>
-          </li>
-          <li>
-            <h2>
-              <a href="#demos">Demos</a>
-            </h2>
-          </li>
-          <li>
-            <h2>
-              <a href="#performance">Performance</a>
-            </h2>
-          </li>
-          <li>
-            <h2>
-              <a href="#issues">Issues</a>
-          </h2>
-          </li>
-          <li>
-            <h2>
-              <a href="#credits">Credits</a>
-            </h2>
-          </li>
-          <li>
-            <h2>
-              <a href="#copyright">Copyright</a>
-            </h2>
-          </li>
-          <li>
-            <h2>
-              <a href="#license">License</a>
-            </h2>
-          </li>
-          <li>
-            <h2>
-              <a href="#warranty">No Warranty</a>
-            </h2>
-          </li>
+          <li><h3><a href="#types">Types</a></h3></li>
+          <li><h3><a href="#install">Install</a></h3></li>
+          <li><h3><a href="#demos">Demos</a></h3></li>
+          <li><h3><a href="#performance">Performance</a></h3></li>
+          <li><h3><a href="#issues">Issues</a></h3></li>
+          <li><h3><a href="#credits">Credits</a></h3></li>
+          <li><h3><a href="#copyright">Copyright</a></h3></li>
+          <li><h3><a href="#license">License</a></h3></li>
+          <li><h3><a href="#warranty">No Warranty</a></h3></li>
         </ul>
       </nav>
       <section>
-        <h1>Ffidl Version 0.7</h1>
+        <h2 id="introduction">Ffidl</h2>
         <p>
-          <a href="http://elf.org/ffidl/">Ffidl</a> allows you to call C
+          Ffidl allows you to call C
           functions using pure Tcl wrappers. You specify a function name, a
           library, a list of argument types, and a return type, and Ffidl
           takes care of the nasty details of converting a Tcl command call
@@ -112,6 +64,58 @@
           and a specification of the entries in the library, you can wrap
           the library into a Tcl extension with Ffidl and pure Tcl.
         </p>
+        <p>
+          The following example shows how to invoke libc's <code>puts(3)</code>
+          function from Tcl code:
+        </p>
+        <pre><code>% package require Ffidl
+0.7
+% ffidl::callout cputs {pointer-utf8} int [ffidl::symbol libc.so.6 puts]
+% cputs "Hello libc!"
+Hello libc!
+12</code></pre>
+        <p>
+          Ffidl can use the
+          latest <a href="https://sourceware.org/libffi">libffi</a> (version
+          3.2.1 at the time of this writing) to dynamically construct calls to C
+          functions from Tcl, to dynamically construct calls from C functions
+          into Tcl. Libffi runs on many platforms, see Supported Platforms
+          section on <a href="https://sourceware.org/libffi">libffi</a>'s
+          website for details.
+        </p>
+        <p>
+          Ffidl can also be configured (<code>--with-libffcall</code>) to use
+          <a href="https://www.gnu.org/software/libffcall/">libffcall</a> a
+          GPL'ed foreign function package which implements both callouts and
+          callbacks on many platforms.  Versions 1.13 and 2.1 have been tested
+          to work.
+        </p>
+        <p>
+          Ffidl uses Tcl's <b>Tcl_LoadFile()</b> and <b>Tcl_FindSymbol()</b>, to
+          load dynamic libraries and discover the locations of functions.
+        </p>
+        <p>
+          Ffidl should be able to run on any system with a stubs enabled Tcl,
+          libffi or libffcall support, and a libdl implementation.
+        </p>
+        <p>
+          Ffidl 0.7 is an alpha release. There are configuration details
+          which you will need to attend to by hand in the current release.
+          The initial development turned up a few bugs in libffi under
+          linux-x86, so users on other architectures should be alert for
+          similar problems. There are several open design issues still to
+          be resolved, so there may be changes in the interfaces in future
+          releases.
+        </p>
+        <p>
+          Assistance is needed to verify that the implementation works on all
+          the architectures supported by libffi and libffcall, and the open
+          design issues could use some discussion.
+        </p>
+      </section>
+      <section>
+        <h2 id="changelog">Changelog</h2>
+        <h3>Ffidl 0.7</h3>
         <p>
           Ffidl 0.7 has the following changes since 0.6:
         </p>
@@ -122,10 +126,13 @@
           </li>
         </ul>
         <p>
-          The 0.7 changes were implemented by Adrián Medraño Calvo and are
-          under BSD License; do not contact the original Ffidl author for
-          support about them.
+          The changes in 0.7 were implemented
+          by <a href="mailto:adrian@medranocalvo.com">Adrián Medraño Calvo</a>
+          for <a href="https://www.prs.de">Patzschke + Rasp Software GmbH</a>,
+          and are under BSD License; do not contact the original Ffidl author
+          for support about them.
         </p>
+        <h3>Ffidl 0.6</h3>
         <p>
           Ffidl 0.6 has the following changes since 0.5:
         </p>
@@ -152,9 +159,9 @@
           </li>
         </ul>
         <p>
-          The 0.6 changes were implemented by Daniel A. Steffen and are
-          under BSD License; do not contact the original Ffidl author for
-          support about them.
+          The changes in 0.6 were implemented by Daniel A. Steffen, are
+          Copyright &copy; 2005 by Daniel A. Steffen and are under BSD License;
+          do not contact the original Ffidl author for support about them.
         </p>
         <p>
           Ffidl 0.6 has been verified to build and pass its testsuite on
@@ -180,117 +187,13 @@
           <li>DEC Alpha Debian GNU/Linux 3.0, Linux 2.2 kernel
           </li>
         </ul>
-        <p>
-          Ffidl uses the
-          latest <a href="http://sources.redhat.com/libffi/">libffi-3.2.1</a>
-          from
-          <a href="http://savannah.gnu.org/cgi-bin/viewcvs/gcc/gcc/libffi/">gcc
-            CVS</a> to dynamically construct calls to C functions from Tcl, to
-          dynamically construct calls from C functions into Tcl. gcc libffi
-          runs on all platforms where <a href=
-                                         "http://gcc.gnu.org/java/">gcj</a> is available (which uses it).
-        </p>
-        <p>
-          Ffidl can also be configured (--enable-ffcall) to use
-          <a href="http://www.haible.de/bruno/packages-ffcall.html">ffcall-1.10</a>
-          a GPL'ed foreign function package which implements both callouts
-          and callbacks on:
-        </p>
-        <ul>
-          <li>i486-unknown-linux (gcc)
-          </li>
-          <li>i386-unknown-sysv4.0 (gcc, /usr/bin/cc, /usr/ucb/cc)
-          </li>
-          <li>i386-pc-solaris2.6 (gcc)
-          </li>
-          <li>i486-unknown-sco3.2v4.2 (gcc, cc -Of)
-          </li>
-          <li>i486-unknown-os2emx (gcc), i386-pc-cygwin32 (gcc)
-          </li>
-          <li>i386-pc-win32 (msvc4, msvc5)
-          </li>
-          <li>m68k-next-nextstep3 (cc), m68k-sun-sunos4.0 (cc)
-          </li>
-          <li>m68k-unknown-linux (gcc)
-          </li>
-          <li>mips-sgi-irix4.0.5 (gcc, cc -ansi, cc -D__STDC__, cc -cckr)
-          </li>
-          <li>mips-sgi-irix5.2 (gcc, cc -ansi, cc -D__STDC__, cc -cckr)
-          </li>
-          <li>mips-sgi-irix5.3 (gcc, cc -ansi, cc -D__STDC__, cc -cckr)
-          </li>
-          <li>mips-sgi-irix6.2 (cc -32),
-          </li>
-          <li>mips-sgi-irix6.4 (cc -32, cc -n32, cc -64)
-          </li>
-          <li>mips-sgi-irix6.5 (cc -n32 is broken, gcc works)
-          </li>
-          <li>sparc-sun-sunos4.1.1 (gcc, cc)
-          </li>
-          <li>sparc-sun-solaris2.3 (gcc)
-          </li>
-          <li>sparc-sun-solaris2.4 (gcc, cc)
-          </li>
-          <li>alpha-dec-osf3.0 (gcc, cc)
-          </li>
-          <li>alpha-dec-osf4.0 (gcc, cc)
-          </li>
-          <li>hppa1.0-hp-hpux8.00 (gcc, cc)
-          </li>
-          <li>hppa1.1-hp-hpux9.05 (cc),
-          </li>
-          <li>hppa1.1-hp-hpux10.01 (cc)
-          </li>
-          <li>hppa2.0-hp-hpux10.20 (cc +DA1.1)
-          </li>
-          <li>arm -- untested
-          </li>
-          <li>rs6000-ibm-aix3.2.5 (gcc, c89, xlc)
-          </li>
-          <li>powerpc-ibm-aix4.1.4.0 (cc)
-          </li>
-          <li>powerpc-unknown-linux (gcc)
-          </li>
-          <li>powerpc-apple-darwin6.8 (gcc)
-          </li>
-          <li>m88k -- untested
-          </li>
-          <li>convex -- untested
-          </li>
-          <li>ia64-unknown-linux (gcc)
-          </li>
-          <li>86_64-suse-linux (gcc)
-          </li>
-        </ul>
-        <p>
-          Ffidl uses Tcl's <b>TclpDlopen()</b> and <b>TclpFindSymbol()</b>,
-          to load dynamic libraries and discover the locations of
-          functions.
-        </p>
-        <p>
-          Ffidl should be able to run on any system with a stubs enabled
-          Tcl, libffi or ffcall support, and a libdl implementation.
-        </p>
-        <p>
-          Ffidl 0.7 is an alpha release. There are configuration details
-          which you will need to attend to by hand in the current release.
-          The initial development turned up a few bugs in libffi under
-          linux-x86, so users on other architectures should be alert for
-          similar problems. There are several open design issues still to
-          be resolved, so there may be changes in the interfaces in future
-          releases.
-        </p>
-        <p>
-          Assistance is needed to verify that the implementation works on
-          all the architectures supported by libffi, and the open design
-          issues could use some discussion.
-        </p>
+        <h3>Ffidl 0.5</h3>
+        The original Ffidl, created by <a href="mailto:rec@elf.org">Roger E
+        Critchlow Jr</a>.  Please, refer
+        to <a href="http://elf.org/ffidl/">Ffidl 0.5</a> for details.
       </section>
-      <section>
-        <h3>
-          <a name="commands" id="commands">Commands, Functions, and
-            Procs</a>
-        </h3>
+      <section id="commands">
+        <h2>Commands, Functions, and Procs</h2>
         <p>
           Ffidl defines seven Tcl commands in the <b>Ffidl</b> package:
           <a href="#::ffidl::callout">::ffidl::callout</a>,
@@ -311,10 +214,13 @@
           These interfaces should be considered subject to revision.
         </p>
         <dl>
-          <dt>
-            <a name="::ffidl::callout"><b>::ffidl::callout</b> <i>name</i>
-              {<i>?arg_type1 ...?</i>} <i>return_type</i> <i>address</i>
-              <i>?protocol?</i></a>
+          <dt id="::ffidl::callout">
+            <b>::ffidl::callout</b>
+            <i>name</i>
+            {<i>?arg_type1 ...?</i>}
+            <i>return_type</i>
+            <i>address</i>
+            <i>?protocol?</i>
           </dt>
           <dd>
             <b>::ffidl::callout</b> defines a Tcl command with the
@@ -330,10 +236,13 @@
               the default, or <b>stdcall</b>.
             </p>
           </dd>
-          <dt>
-            <a name="::ffidl::callback"><b>::ffidl::callback</b>
-              <i>name</i> {<i>?arg_type1 ...?</i>} <i>return_type</i>
-              <i>?protocol?</i> <i>?cmdprefix?</i></a>
+          <dt id="::ffidl::callback">
+            <b>::ffidl::callback</b>
+            <i>name</i>
+            {<i>?arg_type1 ...?</i>}
+            <i>return_type</i>
+            <i>?protocol?</i>
+            <i>?cmdprefix?</i>
           </dt>
           <dd>
             <b>::ffidl::callback</b> declares that a Tcl proc with the
@@ -357,12 +266,12 @@
             appended to the command prefix before evaluation.
             </p>
           </dd>
-          <dt>
-            <a name="::ffidl::library"><b>::ffidl::library</b>
-              <i>?-binding now|lazy?</i>
-              <i>?-visibility local|global?</i>
-              <i>?--?</i>
-              <i>library</i></a>
+          <dt id="::ffidl::library">
+            <b>::ffidl::library</b>
+            <i>?-binding now|lazy?</i>
+            <i>?-visibility local|global?</i>
+            <i>?--?</i>
+            <i>library</i>
           </dt>
           <dd>
             <b>::ffidl::library</b> load a dynamically linked library of name <i>library</i>.
@@ -372,9 +281,10 @@
             configurations.  When they are not specified, the platform's default
             for the Ffidl configuration is used.
           </dd>
-          <dt>
-            <a name="::ffidl::symbol"><b>::ffidl::symbol</b> <i>library</i>
-              <i>symbol</i></a>
+          <dt id="::ffidl::symbol">
+            <b>::ffidl::symbol</b>
+            <i>library</i>
+            <i>symbol</i>
           </dt>
           <dd>
             <b>::ffidl::symbol</b> loads, if necessary, a dynamically
@@ -383,9 +293,11 @@
             <i>symbols</i> available vary with the implementation of
             dynamic loading.
           </dd>
-          <dt>
-            <a name="::ffidl::stubsymbol"><b>::ffidl::stubsymbol</b>
-              <i>library</i> <i>stubstable</i> <i>symbolnumber</i></a>
+          <dt id="::ffidl::stubsymbol">
+            <b>::ffidl::stubsymbol</b>
+            <i>library</i>
+            <i>stubstable</i>
+            <i>symbolnumber</i>
           </dt>
           <dd>
             <b>::ffidl::stubsymbol</b> returns the address of the symbol
@@ -398,9 +310,10 @@
               <b>intXLibStubs</b>.
             </p>
           </dd>
-          <dt>
-            <a name="::ffidl::typedef"><b>::ffidl::typedef</b> <i>name</i>
-              <i>type1 ?...?</i></a>
+          <dt id="::ffidl::typedef">
+            <b>::ffidl::typedef</b>
+            <i>name</i>
+            <i>type1 ?...?</i>
           </dt>
           <dd>
             <b>::ffidl::typedef</b> defines a new Ffidl type name. This may
@@ -412,9 +325,10 @@
             structure in order to use the <b>format</b>, <b>sizeof</b>, and
             <b>alignof</b> options of <b>::ffidl::info</b> on it.
           </dd>
-          <dt>
-            <a name="::ffidl::info"><b>::ffidl::info</b> <i>option</i>
-              <i>?...?</i></a>
+          <dt id="::ffidl::info">
+            <b>::ffidl::info</b>
+            <i>option</i>
+            <i>?...?</i>
           </dt>
           <dd>
             <b>::ffidl::info</b> implements a variety of information
@@ -536,9 +450,9 @@
               </dd>
             </dl>
           </dd>
-          <dt>
-            <a name="::ffidl_pointer_pun">EXTERN void
-              *<b>ffidl_pointer_pun</b>(void *<i>pointer</i>);</a>
+          <dt id="::ffidl_pointer_pun">
+            EXTERN void
+            *<b>ffidl_pointer_pun</b>(void *<i>pointer</i>);
           </dt>
           <dd>
             <b>ffidl_pointer_pun</b> is exported from the Ffidl shared lib
@@ -546,9 +460,9 @@
             coded as Ffidl bindings. There are some examples in
             <b>ffidlrt.tcl</b>.
           </dd>
-          <dt>
-            <a name="::ffidl::find-lib"><b>::ffidl::find-lib</b>
-              <i>library</i></a>
+          <dt id="::ffidl::find-lib">
+            <b>::ffidl::find-lib</b>
+            <i>library</i>
           </dt>
           <dd>
             <b>::ffidl::find-lib</b> converts a conventional name for a
@@ -557,9 +471,9 @@
             <b>ffidlrt.tcl</b> as a table lookup which returns the
             libraries appropriate to my Linux system.
           </dd>
-          <dt>
-            <a name="::ffidl::find-type"><b>::ffidl::find-type</b>
-              <i>type</i></a>
+          <dt id="::ffidl::find-type">
+            <b>::ffidl::find-type</b>
+            <i>type</i>
           </dt>
           <dd>
             <b>::ffidl::find-type</b> converts a standard types such as
@@ -571,9 +485,7 @@
         </dl>
       </section>
       <section>
-        <h3>
-          <a name="types" id="types">Types</a>
-        </h3>
+        <h2 id="types">Types</h2>
         <p>
           The Ffidl builtin types include the scalar C types in both their
           unsized forms and as explicitly bit sized types, and a variety of
@@ -632,6 +544,8 @@
           <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> unsigned long </td> <td> unsigned long int </td> </tr>
           <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> float </td> <td> float </td> </tr>
           <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> double </td> <td> double </td> </tr>
+          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> long long </td> <td> long long </td> </tr>
+          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> unsigned long long </td> <td> unsigned long long </td> </tr>
           <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> long double </td> <td> long double </td> </tr>
           <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> sint8 </td> <td> signed 8 bit int </td> </tr>
           <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> uint8 </td> <td> unsigned 8 bit int </td> </tr>
@@ -657,10 +571,8 @@
         </table>
       </section>
       <section>
-        <h3>
-          <a name="install" id="install">Installation</a>
-        </h3>
-        <h4>Download</h4>
+        <h2 id="install">Installation</h2>
+        <h3>Download</h3>
         <p>
           The latest release can be downloaded from the following links:
         </p>
@@ -675,7 +587,7 @@
         <p>
           The main <a href="https://github.com/prs-de/ffidl">repository</a> can be accessed via web and <a href="http://git-scm.com">git</a>.
         </p>
-        <h4>Build</h4>
+        <h3>Build</h3>
         <p>
           Building on plaforms supported by TEA 3.2 should be painless.
         </p>
@@ -702,22 +614,22 @@ configure &amp;&amp; make</code></pre>
           instance, to find, build, or install libraries for gmp and gdbm,
           or to adjust the pathnames for libc, libm, tcl, and tk.
         </p>
-        <p>
-          Running
+        <h3>Running</h3>
           <pre><code>make test</code></pre>
-          will run the ffidl tests (when configured with --enable-test). It is not
+        <p>
+          will run the Ffidl tests (when configured with <code>--enable-test</code>). It is not
           quite a systematic test suite, but it does exercise a good deal of Ffidl's
           capabilities, and it has turned up some problems with libffi.
         </p>
       </section>
-      <section>
-        <h3><a name="demos" id="demos">Demos</a></h3>
+      <section id="demos">
+        <h2>Demos</h2>
         <p>
           The demos directory contains several small and medium size
           examples of Ffidl bindings to shared libraries, and some code for
           making comparisons to other ways of doing the same thing.
         </p>
-        <table border="2">
+        <table>
           <tr>
             <td>
               atol.tcl
@@ -884,8 +796,8 @@ configure &amp;&amp; make</code></pre>
           want to build something more efficient.
         </p>
       </section>
-      <section>
-        <h3><a name="performance" id="performance">Performance</a></h3>
+      <section id="performance">
+        <h2>Performance</h2>
         <p>
           Performance appears to be excellent, but I can't take any credit
           because libffi is doing most of the work. The
@@ -899,8 +811,8 @@ configure &amp;&amp; make</code></pre>
           functions.
         </p>
       </section>
-      <section>
-        <h3><a name="issues" id="issues">Open Issues</a></h3>
+      <section id="issues">
+        <h2>Open Issues</h2>
         <p>
           A few issues have been closed since the initial release.
         </p>
@@ -988,8 +900,8 @@ configure &amp;&amp; make</code></pre>
           nothing, some give summaries.
         </p>
       </section>
-      <section>
-        <h3><a name="credits" id="credits">Credits</a></h3>
+      <section id="credits">
+        <h2>Credits</h2>
         <p>
           Robin Becker's <a href=
                             "http://www.jessikat.fsnet.co.uk/docdll.html">::dll</a> package,
@@ -1004,21 +916,24 @@ configure &amp;&amp; make</code></pre>
           most of the initial implementation of Ffidl.
         </p>
         <p>
-          Bruno Haible's <a href=
-                            "http://www.haible.de/bruno/packages-ffcall.html">ffcall</a>
-          package for the clisp system provided an alternate implementation
-          and a truly amazing example of cpp macrology.
+          Bruno Haible's <a
+          href="https://www.gnu.org/software/libffcall/">libffcall</a> package
+          for the clisp system provided an alternate implementation and a truly
+          amazing example of cpp macrology.
         </p>
+      </section>
+      <section>
+        <h2>
+          <span id="copyright">Copyright</span>,
+          <span id="license">License</span>, &amp;
+          <span id="warranty">No Warranty</span>
+        </h2>
         <p>
-          <b>
-            <a name="copyright" id="copyright">Copyright</a>,
-            <a name="license" id="license">License</a>, &amp;
-            <a name="warranty" id="warranty">No Warranty</a>
-          </b>
-        </p>
-        <p>
-          Ffidl Version 0.6, Copyright &copy; 1999 by Roger E Critchlow Jr,
-          Santa Fe, NM, USA
+          Ffidl Version 0.7</br>
+          Copyright &copy; 2015-2016 Patzschke + Rasp Software GmbH,
+          Wiesbaden;</br>
+          Copyright &copy; 2005 by Daniel A. Steffen;</br>
+          Copyright &copy; 1999 by Roger E Critchlow Jr, Santa Fe, NM, USA.
         </p>
         <p>
           Permission is hereby granted, free of charge, to any person
@@ -1044,26 +959,6 @@ configure &amp;&amp; make</code></pre>
           CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
           SOFTWARE.
         </p>
-        <p>
-          Changes from ffidl 0.5 are under BSD License and are Copyright
-          &copy; 2005 by Daniel A. Steffen
-        </p>
-        <p>
-          Changes from ffidl 0.6 are under BSD License and are Copyright
-          &copy; 2015, Patzschke + Rasp Software GmbH, Wiesbaden
-        </p>
-        <p>
-          Note that <a href="http://sources.redhat.com/libffi/">libffi</a>
-          is Copyright &copy; 1996-2003 Red Hat, Inc. and bears a similar
-          copyright notice, license, and non-warranty.
-        </p>
-        <p>
-          Note that <a href=
-                       "http://www.haible.de/bruno/packages-ffcall.html">ffcall-1.10</a>
-          is Copyright &copy; 1995-2004 Bruno Haible, &copy; 2000 Adam
-          Fedor, &copy; 2004 Paul Guyot and is licensed under the
-          <a href="http://www.gnu.org">GNU General Public License</a>.
-        </p>
       </section>
     </div>
     <!-- right column content here -->
@@ -1076,11 +971,11 @@ configure &amp;&amp; make</code></pre>
           Steffen</a>
       </address>
       <address>
-        <a href="mailto:amcalvo@prs.de">Adrián
+        <a href="mailto:adrian@medranocalvo.com">Adrián
           Medraño Calvo</a>
       </address><!-- Created: Sun Mar 14 22:54:17 MST 1999 -->
       <!-- hhmts start -->
-      Last modified: Feb 17 2015 <!-- hhmts end -->
+      Last modified: Mar 12 2018 <!-- hhmts end -->
       <address>
         <a href="http://www.elf.org">elf.org</a>
       </address>
