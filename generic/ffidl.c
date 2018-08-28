@@ -1392,7 +1392,7 @@ static int cif_parse(Tcl_Interp *interp, ffidl_client *client, Tcl_Obj *args, Tc
   Tcl_Obj **argv;
   char *protocolname;
   Tcl_DString signature;
-  ffidl_cif *cif;
+  ffidl_cif *cif = NULL;
   /* fetch argument types */
   if (Tcl_ListObjGetElements(interp, args, &argc, &argv) == TCL_ERROR) return TCL_ERROR;
   /* fetch protocol */
@@ -1417,30 +1417,23 @@ static int cif_parse(Tcl_Interp *interp, ffidl_client *client, Tcl_Obj *args, Tc
     cif->protocol = protocol;
     if (cif == NULL) {
       Tcl_AppendResult(interp, "couldn't allocate the ffidl_cif", NULL); 
-      Tcl_DStringFree(&signature);
-      return TCL_ERROR;
+      goto error;
     }
     /* parse return value spec */
     if (type_parse(interp, client, callbackp ? FFIDL_CBRET : FFIDL_RET, ret,
 		   &cif->rtype, &cif->rvalue, &cif->ret) == TCL_ERROR) {
-      cif_free(cif);
-      Tcl_DStringFree(&signature);
-      return TCL_ERROR;
+      goto error;
     }
     /* parse arg specs */
     for (i = 0; i < argc; i += 1)
       if (type_parse(interp, client, callbackp ? FFIDL_CBARG : FFIDL_ARG, argv[i],
 		     &cif->atypes[i], &cif->avalues[i], &cif->args[i]) == TCL_ERROR) {
-	cif_free(cif);
-	Tcl_DStringFree(&signature);
-	return TCL_ERROR;
+	goto error;
       }
     /* see if we done right */
     if (cif_prep(cif) != TCL_OK) {
       Tcl_AppendResult(interp, "type definition error", NULL);
-      cif_free(cif);
-      Tcl_DStringFree(&signature);
-      return TCL_ERROR;
+      goto error;
     }
     /* define the cif */
     cif_define(client, Tcl_DStringValue(&signature), cif);
@@ -1453,6 +1446,12 @@ static int cif_parse(Tcl_Interp *interp, ffidl_client *client, Tcl_Obj *args, Tc
   /* return success */
   *cifp = cif;
   return TCL_OK;
+error:
+  if (cif) {
+    cif_free(cif);
+  }
+  Tcl_DStringFree(&signature);
+  return TCL_ERROR;
 }
 /*
  * callout management
@@ -2832,7 +2831,7 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
   Tcl_Obj **argv;
   Tcl_DString usage, ds;
   Tcl_Command res;
-  ffidl_cif *cif;
+  ffidl_cif *cif = NULL;
   ffidl_callout *callout;
   ffidl_client *client = (ffidl_client *)clientData;
   int has_protocol = objc - 1 >= protocol_ix;
@@ -2842,8 +2841,9 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
     Tcl_WrongNumArgs(interp, 1, objv, "name {?argument_type ...?} return_type address ?protocol?");
     return TCL_ERROR;
   }
-  /* fetch name */
   Tcl_DStringInit(&ds);
+  Tcl_DStringInit(&usage);
+  /* fetch name */
   name = Tcl_GetString(objv[name_ix]);
   if (!strstr(name, "::")) {
     Tcl_Namespace *ns;
@@ -2861,11 +2861,11 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
 		objv[return_ix],
 		has_protocol ? objv[protocol_ix] : NULL,
 		&cif, 0) == TCL_ERROR) {
-    return TCL_ERROR;
+    goto error;
   }
   /* fetch function pointer */
   if (Tcl_GetLongFromObj(interp, objv[address_ix], &tmp) == TCL_ERROR) {
-    return TCL_ERROR;
+    goto error;
   }
   fn = (void (*)())tmp;
   /* if callout is already defined, redefine it */
@@ -2874,7 +2874,6 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
   }
   /* build the usage string */
   Tcl_ListObjGetElements(interp, objv[args_ix], &argc, &argv);
-  Tcl_DStringInit(&usage);
   for (i = 0; i < argc; i += 1) {
     if (i != 0) Tcl_DStringAppend(&usage, " ", 1);
     Tcl_DStringAppend(&usage, Tcl_GetString(argv[i]), -1);
@@ -2882,10 +2881,8 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
   /* allocate the callout structure */
   callout = (ffidl_callout *)Tcl_Alloc(sizeof(ffidl_callout)+Tcl_DStringLength(&usage)+1);
   if (callout == NULL) {
-    Tcl_DStringFree(&usage);
-    cif_dec_ref(cif);
     Tcl_AppendResult(interp, "can't allocate ffidl_callout for: ", name, NULL);
-    return TCL_ERROR;
+    goto error;
   }
   /* initialize the callout */
   callout->cif = cif;
@@ -2900,6 +2897,13 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
   res = Tcl_CreateObjCommand(interp, name, tcl_ffidl_call, (ClientData) callout, callout_delete);
   Tcl_DStringFree(&ds);
   return (res ? TCL_OK : TCL_ERROR);
+error:
+  Tcl_DStringFree(&ds);
+  Tcl_DStringFree(&usage);
+  if (cif) {
+    cif_dec_ref(cif);
+  }
+  return TCL_ERROR;
 }
 
 #if USE_CALLBACKS
