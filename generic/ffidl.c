@@ -2594,6 +2594,8 @@ static int tcl_ffidl_info(ClientData clientData, Tcl_Interp *interp, int objc, T
     "use-libffi",
 #define INFO_USE_LIBFFI_RAW 16
     "use-libffi-raw",
+#define INFO_NULL 17
+    "NULL",
     NULL
   };
 
@@ -2720,6 +2722,9 @@ static int tcl_ffidl_info(ClientData clientData, Tcl_Interp *interp, int objc, T
     return TCL_OK;
   case INFO_CANONICAL_HOST:
     Tcl_SetObjResult(interp, Tcl_NewStringObj(CANONICAL_HOST,-1));
+    return TCL_OK;
+  case INFO_NULL:
+    Tcl_SetObjResult(interp, Ffidl_NewPointerObj(NULL));
     return TCL_OK;
   }
   
