@@ -1221,12 +1221,14 @@ static int cif_prep(ffidl_cif *cif, int protocol)
 static int cif_protocol(Tcl_Interp *interp, Tcl_Obj *obj, int *protocolp, char **protocolnamep)
 {
 #if USE_LIBFFI
-  *protocolp = FFI_DEFAULT_ABI;
-  *protocolnamep = NULL;
-  if (obj != NULL) {
-    *protocolnamep = Tcl_GetString(obj);
 #ifdef __WIN32__
-    if (strcmp(*protocolnamep, "cdecl") == 0) {
+  if (obj != NULL) {
+    int len = 0;
+    *protocolnamep = Tcl_GetStringFromObj(obj, &len);
+    if (len == 0 || strcmp(*protocolnamep, "default") == 0) {
+      *protocolp = FFI_DEFAULT_ABI;
+      *protocolnamep = NULL;
+    } else if (strcmp(*protocolnamep, "cdecl") == 0) {
       *protocolp = FFI_SYSV;
     } else if (strcmp(*protocolnamep, "stdcall") == 0) {
       *protocolp = FFI_STDCALL;
@@ -1236,15 +1238,17 @@ static int cif_protocol(Tcl_Interp *interp, Tcl_Obj *obj, int *protocolp, char *
 		       NULL);
       return TCL_ERROR;
     }
+  } else
 #endif
-    if (*protocolp == FFI_DEFAULT_ABI)
+    {
+      *protocolp = FFI_DEFAULT_ABI;
       *protocolnamep = NULL;
-  }
+    }
 #endif
 #if USE_FFCALL
   *protocolp = 0;
   *protocolnamep = NULL;
-#endif    
+#endif
   return TCL_OK;
 }
 /*
