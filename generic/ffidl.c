@@ -367,8 +367,9 @@ typedef struct ffidl_load_flags ffidl_load_flags;
  *				  
  * Functions exported from this file.
  */
-EXTERN void *   ffidl_pointer_pun _ANSI_ARGS_((void *p));
-EXTERN int	Ffidl_Init _ANSI_ARGS_((Tcl_Interp * interp));
+
+EXTERN void *ffidl_pointer_pun (void *p);
+EXTERN int   Ffidl_Init (Tcl_Interp * interp);
 
 /*****************************************
  *
