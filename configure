@@ -10138,15 +10138,13 @@ $as_echo "no" >&6; }
 
 
 
-if test "${TEA_PLATFORM}" != "windows" ; then
-    if test "${TCL_MAJOR_VERSION}" -gt 8 -o \
-        \( "${TCL_MAJOR_VERSION}" -eq 8 -a "${TCL_MINOR_VERSION}" -ge 6 \)
-    then
+if test "${TCL_MAJOR_VERSION}" -gt 8 -o \
+    \( "${TCL_MAJOR_VERSION}" -eq 8 -a "${TCL_MINOR_VERSION}" -ge 6 \); then
 
 $as_echo "#define USE_TCL_LOADFILE 1" >>confdefs.h
 
-        PKG_DL_OBJS=
-    else
+    PKG_DL_OBJS=
+else
 
 $as_echo "#define USE_TCL_DLOPEN 1" >>confdefs.h
 
@@ -10161,8 +10159,7 @@ $as_echo "#define USE_TCL_DLOPEN 1" >>confdefs.h
     done
 
 
-        PKG_DL_OBJS=${DL_OBJS}
-    fi
+    PKG_DL_OBJS=${DL_OBJS}
 fi
 
 
