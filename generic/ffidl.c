@@ -914,6 +914,11 @@ static int type_format(Tcl_Interp *interp, ffidl_type *type, int *offset)
 {
   int i;
   char buff[128];
+  /* Handle void case. */
+  if (type->size == 0) {
+    Tcl_SetResult(interp, "", TCL_STATIC);
+    return TCL_OK;
+  }
   /* Insert alignment padding */
   while ((*offset % type->alignment) != 0) {
     Tcl_AppendResult(interp, "x", NULL);
