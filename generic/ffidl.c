@@ -345,6 +345,35 @@ typedef void *ffidl_UnloadProc;
 #endif	/* __WIN32__ */
 #endif	/* USE_TCL_DLOPEN */
 
+#if !defined(USE_TCL_DLOPEN) && !defined(USE_TCL_LOADFILE)
+static int ffidlsymfallback(ffidl_LoadHandle handle,
+			    char *nativeSymbolName,
+			    void **address,
+			    char *error)
+{
+  int status = TCL_OK;
+#ifdef __WIN32__
+  /*
+   * Ack, what about data?  I guess they're not particular,
+   * some windows headers declare data as dll import, eg
+   * vc98/include/math.h: _CRTIMP extern double _HUGE;
+   */
+  *address = GetProcAddress(handle, nativeSymbolName);
+  if (!*address) {
+    error = "???";
+    status = TCL_ERROR;
+  }
+#else
+  *address = dlsym(handle, nativeSymbolName);
+  error = dlerror();
+  if (error) {
+    status = TCL_ERROR;
+  }
+#endif /* __WIN32__ */
+  return status;
+}
+#endif /* !USE_TCL_DLOPEN && !USE_TCL_LOADFILE */
+
 static int ffidlsym(Tcl_Interp *interp,
 		    ffidl_LoadHandle handle,
 		    Tcl_Obj *symbolNameObj,
@@ -354,10 +383,10 @@ static int ffidlsym(Tcl_Interp *interp,
   char *error = NULL;
   char *symbolName = NULL;
   char *nativeSymbolName = NULL;
-  Tcl_DString ds;
+  Tcl_DString nds;
 
   symbolName = Tcl_GetString(symbolNameObj);
-  nativeSymbolName = Tcl_UtfToExternalDString(NULL, symbolName, -1, &ds);
+  nativeSymbolName = Tcl_UtfToExternalDString(NULL, symbolName, -1, &nds);
 #if defined(USE_TCL_DLOPEN)
   *address = TclpFindSymbol(interp, (Tcl_LoadHandle)handle, nativeSymbolName);
   if (!*address) {
@@ -371,40 +400,29 @@ static int ffidlsym(Tcl_Interp *interp,
     status = TCL_ERROR;
   }
 #else
-#ifdef __WIN32__
-  /*
-   * Ack, what about data?  I guess they're not particular,
-   * some windows headers declare data as dll import, eg
-   * vc98/include/math.h: _CRTIMP extern double _HUGE;
-   */
-  *address = GetProcAddress(handle, name);
-  if (!*address) {
-    error = "???";
-    status = TCL_ERROR;
-  }
-#else
-  *address = dlsym(handle, name);
-  error = dlerror();
-  if (error) {
-    status = TCL_ERROR;
-  }
-#endif
+  status = ffidlsymfallback(handle, nativeSymbolName, address, error);
   if (status != TCL_OK) {
     /*
      * Some platforms still add an underscore to the beginning of symbol
      * names.  If we can't find a name without an underscore, try again
      * with the underscore.
      */
-    error = NULL;
-    Tcl_Obj *newSymbolNameObj = Tcl_NewStringObj("_", 1);
-    Tcl_AppendObjToObj(newSymbolNameObj, symbolNameObj);
-    Tcl_IncrRefCount(newSymbolNameObj);
-    status = ffidlsym(interp, handle, newSymbolNameObj, address);
-    Tcl_DecrRefCount(newSymbolNameObj);
-  }
-#endif
+    char *newNativeSymbolName = NULL;
+    Tcl_DString uds;
+    char *ignoreerror = NULL;
 
-  Tcl_DStringFree(&ds);
+    Tcl_DStringInit(&uds);
+    Tcl_DStringAppend(&uds, "_", 1);
+    Tcl_DStringAppend(&uds, Tcl_DStringValue(&nds), Tcl_DStringLength(&nds));
+    newNativeSymbolName = Tcl_DStringValue(&uds);
+
+    status = ffidlsymfallback(handle, newNativeSymbolName, address, ignoreerror);
+
+    Tcl_DStringFree(&uds);
+  }
+#endif /* USE_TCL_{LOADFILE,DLOPEN} */
+
+  Tcl_DStringFree(&nds);
 
   if (error) {
     Tcl_AppendResult(interp, "couldn't find symbol \"", symbolName, "\" : ", error, NULL);
@@ -467,7 +485,7 @@ static int ffidlopen(Tcl_Interp *interp,
   char *error = NULL;
 
   libraryName = Tcl_GetString(libNameObj);
-  nativeLibraryName = Tcl_UtfToExternalDString(NULL, libNameObj, -1, &ds);
+  nativeLibraryName = Tcl_UtfToExternalDString(NULL, libraryName, -1, &ds);
   nativeLibraryName = strlen(nativeLibraryName) ? nativeLibraryName : NULL;
 
 #ifdef __WIN32__
