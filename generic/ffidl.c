@@ -695,8 +695,6 @@ struct ffidl_closure {
 #if USE_FFCALL
    __TR_function lib_closure;
 #endif
-   Tcl_Interp *interp;
-   ffidl_callback *callback;
 };
 /*
  * The ffidl_callback binds a ffidl_cif pointer to
@@ -706,6 +704,7 @@ struct ffidl_closure {
 struct ffidl_callback {
   ffidl_cif *cif;
   Tcl_Obj *proc;
+  Tcl_Interp *interp;
   ffidl_closure closure;
 };
 #endif
@@ -1542,9 +1541,8 @@ static void callback_delete(ffidl_client *client, ffidl_callback *callback)
 /* call a tcl proc from a libffi closure */
 static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *user_data)
 {
-  ffidl_closure *closure = (ffidl_closure *)user_data;
-  ffidl_callback *callback = closure->callback;
-  Tcl_Interp *interp = closure->interp;
+  ffidl_callback *callback = (ffidl_callback *)user_data;
+  Tcl_Interp *interp = callback->interp;
   ffidl_cif *cif = callback->cif;
   Tcl_Obj **objv, *obj, *list;
   char buff[128];
@@ -1771,9 +1769,8 @@ escape:
 #if USE_FFCALL
 static void callback_callback(void *user_data, va_alist alist)
 {
-  ffidl_closure *closure = (ffidl_closure *)user_data;
-  ffidl_callback *callback = closure->callback;
-  Tcl_Interp *interp = closure->interp;
+  ffidl_callback *callback = (ffidl_callback *)user_data;
+  Tcl_Interp *interp = callback->interp;
   ffidl_cif *cif = callback->cif;
   Tcl_Obj **objv, *obj, *list;
   char buff[128];
@@ -2764,19 +2761,18 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
   }
   /* initialize the callback */
   callback->cif = cif;
+  callback->interp = interp;
   callback->proc = Tcl_NewStringObj(name, -1);
   Tcl_IncrRefCount(callback->proc);
 
   closure = &(callback->closure);
-  closure->interp = interp;
-  closure->callback = callback;
 #if USE_LIBFFI
   closure->lib_closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->executable));
 #if FFI_NATIVE_RAW_API
   if (cif->use_raw_api) {
     if (ffi_prep_raw_closure_loc((ffi_raw_closure *)closure->lib_closure, &callback->cif->lib_cif,
                                  (void (*)(ffi_cif*,void*,ffi_raw*,void*))callback_callback,
-                                 (void *)closure, closure->executable) != FFI_OK) {
+                                 (void *)callback, closure->executable) != FFI_OK) {
       Tcl_AppendResult(interp, "libffi can't make raw closure for: ", name, NULL);
       return TCL_ERROR;
     }
@@ -2784,13 +2780,13 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
 #endif
     if (ffi_prep_closure_loc(closure->lib_closure, &callback->cif->lib_cif,
                             (void (*)(ffi_cif*,void*,void**,void*))callback_callback,
-                            (void *)closure, closure->executable) != FFI_OK) {
+                            (void *)callback, closure->executable) != FFI_OK) {
       Tcl_AppendResult(interp, "libffi can't make closure for: ", name, NULL);
       return TCL_ERROR;
     }
 #endif
 #if USE_FFCALL
-  closure->lib_closure = alloc_callback(callback_callback, closure);
+  closure->lib_closure = alloc_callback(callback_callback, callback);
 #endif
   /* define the callback */
   callback_define(client, name, callback);
