@@ -2719,6 +2719,7 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
   ffidl_callback *callback;
   ffidl_client *client = (ffidl_client *)clientData;
   ffidl_closure *closure;
+  void (*fn)();
   /* usage check */
   if (objc != 4 && objc != 5) {
     Tcl_WrongNumArgs(interp, 1, objv, "name {?argument_type ...?} return_type ?protocol?");
@@ -2786,6 +2787,15 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
   /* define the callback */
   callback_define(client, name, callback);
   Tcl_DStringFree(&ds);
+
+  /* Return function pointer to the callback. */
+#if USE_LIBFFI
+  fn = (void (*)())closure->executable;
+#elif USE_FFCALL
+  fn = (void (*)())closure->lib_closure;
+#endif
+  Tcl_SetObjResult(interp, Tcl_NewLongObj((long)fn));
+
   return TCL_OK;
 }
 #endif
