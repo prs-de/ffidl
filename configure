@@ -2645,7 +2645,7 @@ ac_config_headers="$ac_config_headers ffidlConfig.h"
 
 
 
-    vars="-imacros ffidlConfig.h"
+    vars="-I\$(top_builddir)"
     for i in $vars; do
 	PKG_INCLUDES="$PKG_INCLUDES $i"
     done
@@ -10486,7 +10486,7 @@ LIBOBJS=$ac_libobjs
 LTLIBOBJS=$ac_ltlibobjs
 
 
-DEFS=-DHAVE_FFIDL_CONFIG_H
+as_fn_append DEFS " -DHAVE_FFIDL_CONFIG_H"
 
 CFLAGS="${CFLAGS} ${CPPFLAGS}"; CPPFLAGS=""
 

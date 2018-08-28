@@ -58,6 +58,8 @@
  * Author: Adrián Medraño Calvo <amcalvo@prs.de>
  */
 
+#include <ffidlConfig.h>
+
 #include <tcl.h>
 #include <tclInt.h>
 #include <tclPort.h>

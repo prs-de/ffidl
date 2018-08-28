@@ -41,8 +41,8 @@ PKG_PREREQ(0.9.0)
 #--------------------------------------------------------------------
 
 AC_CONFIG_HEADERS([ffidlConfig.h])
-AC_CONFIG_COMMANDS_PRE([DEFS=-DHAVE_FFIDL_CONFIG_H])
-TEA_ADD_INCLUDES([-imacros ffidlConfig.h])
+AC_CONFIG_COMMANDS_PRE([AS_VAR_APPEND([DEFS], [" -DHAVE_FFIDL_CONFIG_H"])])
+TEA_ADD_INCLUDES([-I]AS_ESCAPE([[$(top_builddir)]]))
 CONFIG_CLEAN_FILES=ffidlConfig.h
 AC_SUBST(CONFIG_CLEAN_FILES)
 
