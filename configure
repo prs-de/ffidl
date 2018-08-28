@@ -6407,17 +6407,6 @@ if test "$tcl_ok" = "yes"; then
 
 
 
-
-    vars="-lgcc"
-    for i in $vars; do
-	if test "${TEA_PLATFORM}" = "windows" -a "$GCC" = "yes" ; then
-	    # Convert foo.lib to -lfoo for GCC.  No-op if not *.lib
-	    i=`echo "$i" | sed -e 's/^\([^-].*\)\.lib$/-l\1/i'`
-	fi
-	PKG_LIBS="$PKG_LIBS $i"
-    done
-
-
     FFIDL_TEST=1
 fi
 
