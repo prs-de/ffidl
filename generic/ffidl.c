@@ -62,7 +62,7 @@
 #include <tclInt.h>
 #include <tclPort.h>
 
-#ifdef LOOKUP_TK_STUBS
+#if defined(LOOKUP_TK_STUBS)
 static const char *MyTkInitStubs(Tcl_Interp *interp, char *version, int exact);
 static void *tkStubsPtr, *tkPlatStubsPtr, *tkIntStubsPtr, *tkIntPlatStubsPtr, *tkIntXlibStubsPtr;
 #else
@@ -78,7 +78,7 @@ static void *tkStubsPtr, *tkPlatStubsPtr, *tkIntStubsPtr, *tkIntPlatStubsPtr, *t
  * BUILD_Ffidl should be undefined for Unix.
  */
 
-#ifdef BUILD_Ffidl
+#if defined(BUILD_Ffidl)
 #undef TCL_STORAGE_CLASS
 #define TCL_STORAGE_CLASS DLLEXPORT
 #endif /* BUILD_Ffidl */
@@ -165,7 +165,7 @@ static void *tkStubsPtr, *tkPlatStubsPtr, *tkIntStubsPtr, *tkIntPlatStubsPtr, *t
 #endif
 #endif
 
-#ifdef __CHAR_UNSIGNED__
+#if defined(__CHAR_UNSIGNED__)
 #define lib_type_char	&ffi_type_uint8
 #else
 #define lib_type_char	&ffi_type_sint8
@@ -316,7 +316,7 @@ typedef Tcl_FSUnloadFileProc *ffidl_UnloadProc;
 typedef void *ffidl_LoadHandle;
 typedef void *ffidl_UnloadProc;
 
-#ifdef __WIN32__
+#if defined(__WIN32__)
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -403,7 +403,7 @@ EXTERN int   Ffidl_Init (Tcl_Interp * interp);
 /*
  * aliases for unsized type names
  */
-#ifdef __CHAR_UNSIGNED__
+#if defined(__CHAR_UNSIGNED__)
 #define FFIDL_CHAR	FFIDL_UINT8
 #else
 #define FFIDL_CHAR	FFIDL_SINT8
@@ -526,7 +526,7 @@ EXTERN int   Ffidl_Init (Tcl_Interp * interp);
 #define SINT64_T	signed long long
 #endif
 
-#ifdef ALIGNOF_INT64
+#if defined(ALIGNOF_INT64)
 #define HAVE_INT64	1
 #endif
 
@@ -756,17 +756,17 @@ union ffidl_value {
  */
 struct ffidl_type {
    int refs;			/* Reference counting */
-   size_t size;
-   unsigned short typecode;
-   unsigned short class;
-   unsigned short alignment;
-   unsigned short nelts;
-   ffidl_type **elements;
+   size_t size;			/* Type's size */
+   unsigned short typecode;	/* Type identifier */
+   unsigned short class;	/* Type's properties */
+   unsigned short alignment;	/* Type's alignment */
+   unsigned short nelts;	/* Number of elements */
+   ffidl_type **elements;	/* Pointer to element types */
 #if USE_LIBFFI
-   ffi_type *lib_type;
+   ffi_type *lib_type;		/* libffi's type data */
 #endif
 #if USE_FFCALL
-   enum __AVtype lib_type;
+   enum __AVtype lib_type;	/* ffcall's type data */
    int splittable;
 #endif
 };
@@ -794,20 +794,21 @@ struct ffidl_client {
  * used to pass converted arguments into ffi_call.
  */
 struct ffidl_cif {
-   int refs;
-   ffidl_client *client;
-   int protocol;
-   ffidl_type *rtype;
-   ffidl_value rvalue;
-   void *ret;
-   int argc;
-   ffidl_type **atypes;
-   ffidl_value *avalues;
-   void **args;
+   int refs;		   /* Reference counting. */
+   ffidl_client *client;   /* Backpointer to the ffidl_client. */
+   int protocol;	   /* Calling convention. */
+   ffidl_type *rtype;	   /* Type of return value. */
+   ffidl_value rvalue;	   /* Space to store the return value. */
+   void *ret;		   /* Points to the appropriate place within rvalue. */
+   int argc;		   /* Number of arguments. */
+   ffidl_type **atypes;	   /* Type of each argument. */
+   ffidl_value *avalues;   /* Value of each argument. */
+   void **args;		   /* Points to the appropriate place within avalues. */
 #if USE_LIBFFI
-   int use_raw_api;
-   ffi_type **lib_atypes;
-   ffi_cif lib_cif;
+   int use_raw_api;		/* Whether to use libffi's raw API. */
+   ffi_type **lib_atypes;	/* Pointer to storage area for libffi's internal
+				 * argument types. */
+   ffi_cif lib_cif;		/* Libffi's internal data. */
 #endif
 };
 
@@ -892,12 +893,12 @@ static ffidl_type ffidl_type_ulong = init_type(SIZEOF_LONG, FFIDL_ULONG, FFIDL_A
 #endif
 #if HAVE_LONG_LONG
 static ffidl_type ffidl_type_slonglong = init_type(SIZEOF_LONG_LONG, FFIDL_SLONGLONG, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_LONG_LONG, lib_type_slonglong);
-static ffidl_type ffidl_type_ulonglong = init_type(SIZEOF_LONG_LONG, FFIDL_ULONGLONG, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_LONG_LONG, lib_type_ulonglong );
+static ffidl_type ffidl_type_ulonglong = init_type(SIZEOF_LONG_LONG, FFIDL_ULONGLONG, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_LONG_LONG, lib_type_ulonglong);
 #endif
 static ffidl_type ffidl_type_float = init_type(SIZEOF_FLOAT, FFIDL_FLOAT, FFIDL_ALL|FFIDL_GETDOUBLE, ALIGNOF_FLOAT, lib_type_float);
 static ffidl_type ffidl_type_double = init_type(SIZEOF_DOUBLE, FFIDL_DOUBLE, FFIDL_ALL|FFIDL_GETDOUBLE, ALIGNOF_DOUBLE, lib_type_double);
 #if HAVE_LONG_DOUBLE
-static ffidl_type ffidl_type_longdouble = init_type(SIZEOF_LONG_DOUBLE, FFIDL_LONGDOUBLE, FFIDL_ALL|FFIDL_GETDOUBLE, ALIGNOF_LONG_DOUBLE, lib_type_longdouble );
+static ffidl_type ffidl_type_longdouble = init_type(SIZEOF_LONG_DOUBLE, FFIDL_LONGDOUBLE, FFIDL_ALL|FFIDL_GETDOUBLE, ALIGNOF_LONG_DOUBLE, lib_type_longdouble);
 #endif
 static ffidl_type ffidl_type_sint8 = init_type(1, FFIDL_SINT8, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT8, lib_type_sint8);
 static ffidl_type ffidl_type_uint8 = init_type(1, FFIDL_UINT8, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT8, lib_type_uint8);
@@ -909,12 +910,12 @@ static ffidl_type ffidl_type_uint32 = init_type(4, FFIDL_UINT32, FFIDL_ALL|FFIDL
 static ffidl_type ffidl_type_sint64 = init_type(8, FFIDL_SINT64, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_INT64, lib_type_sint64);
 static ffidl_type ffidl_type_uint64 = init_type(8, FFIDL_UINT64, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_INT64, lib_type_uint64);
 #endif
-static ffidl_type ffidl_type_pointer = init_type(SIZEOF_VOID_P, FFIDL_PTR, FFIDL_ALL|FFIDL_GETPOINTER, ALIGNOF_VOID_P, lib_type_pointer);
-static ffidl_type ffidl_type_pointer_obj = init_type(SIZEOF_VOID_P, FFIDL_PTR_OBJ, FFIDL_ARGRET|FFIDL_CBARG|FFIDL_CBRET, ALIGNOF_VOID_P, lib_type_pointer);
-static ffidl_type ffidl_type_pointer_utf8 = init_type(SIZEOF_VOID_P, FFIDL_PTR_UTF8, FFIDL_ARGRET|FFIDL_CBARG, ALIGNOF_VOID_P, lib_type_pointer);
-static ffidl_type ffidl_type_pointer_utf16 = init_type(SIZEOF_VOID_P, FFIDL_PTR_UTF16, FFIDL_ARGRET|FFIDL_CBARG, ALIGNOF_VOID_P, lib_type_pointer);
-static ffidl_type ffidl_type_pointer_byte = init_type(SIZEOF_VOID_P, FFIDL_PTR_BYTE, FFIDL_ARG, ALIGNOF_VOID_P, lib_type_pointer);
-static ffidl_type ffidl_type_pointer_var = init_type(SIZEOF_VOID_P, FFIDL_PTR_VAR, FFIDL_ARG, ALIGNOF_VOID_P, lib_type_pointer);
+static ffidl_type ffidl_type_pointer       = init_type(SIZEOF_VOID_P, FFIDL_PTR,       FFIDL_ALL|FFIDL_GETPOINTER,           ALIGNOF_VOID_P, lib_type_pointer);
+static ffidl_type ffidl_type_pointer_obj   = init_type(SIZEOF_VOID_P, FFIDL_PTR_OBJ,   FFIDL_ARGRET|FFIDL_CBARG|FFIDL_CBRET, ALIGNOF_VOID_P, lib_type_pointer);
+static ffidl_type ffidl_type_pointer_utf8  = init_type(SIZEOF_VOID_P, FFIDL_PTR_UTF8,  FFIDL_ARGRET|FFIDL_CBARG,             ALIGNOF_VOID_P, lib_type_pointer);
+static ffidl_type ffidl_type_pointer_utf16 = init_type(SIZEOF_VOID_P, FFIDL_PTR_UTF16, FFIDL_ARGRET|FFIDL_CBARG,             ALIGNOF_VOID_P, lib_type_pointer);
+static ffidl_type ffidl_type_pointer_byte  = init_type(SIZEOF_VOID_P, FFIDL_PTR_BYTE,  FFIDL_ARG,                            ALIGNOF_VOID_P, lib_type_pointer);
+static ffidl_type ffidl_type_pointer_var   = init_type(SIZEOF_VOID_P, FFIDL_PTR_VAR,   FFIDL_ARG,                            ALIGNOF_VOID_P, lib_type_pointer);
 #if USE_CALLBACKS
 static ffidl_type ffidl_type_pointer_proc = init_type(SIZEOF_VOID_P, FFIDL_PTR_PROC, FFIDL_ARG, ALIGNOF_VOID_P, lib_type_pointer);
 #endif
@@ -934,7 +935,7 @@ static int ffidlsymfallback(ffidl_LoadHandle handle,
 			    char *error)
 {
   int status = TCL_OK;
-#ifdef __WIN32__
+#if defined(__WIN32__)
   /*
    * Ack, what about data?  I guess they're not particular,
    * some windows headers declare data as dll import, eg
@@ -1052,7 +1053,7 @@ static int ffidlopen(Tcl_Interp *interp,
   nativeLibraryName = Tcl_UtfToExternalDString(NULL, libraryName, -1, &ds);
   nativeLibraryName = strlen(nativeLibraryName) ? nativeLibraryName : NULL;
 
-#ifdef __WIN32__
+#if defined(__WIN32__)
   if (flags.binding != FFIDL_LOAD_BINDING_NONE ||
       flags.visibility != FFIDL_LOAD_VISIBILITY_NONE) {
     error = "loading flags are not supported under windows";
@@ -1101,7 +1102,7 @@ static int ffidlclose(Tcl_Interp *interp,
     error = Tcl_GetStringResult(interp);
   }
 #else
-#ifdef __WIN32__
+#if defined(__WIN32__)
   if (!FreeLibrary(handle)) {
     status = TCL_ERROR;
     error = "???";
@@ -2046,7 +2047,6 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
 	Tcl_DecrRefCount(objv[i]);
       }
       goto escape;
-      continue;
     }
     Tcl_IncrRefCount(objv[i]);
   }
@@ -2068,11 +2068,12 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
 	goto escape;
       }
       ltmp = (long)dtmp;
-      if (dtmp != ltmp)
+      if (dtmp != ltmp) {
 	if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR) {
 	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
 	  goto escape;
 	}
+      }
     } else if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR) {
       Tcl_AppendResult(interp, ", converting callback return value", NULL);
       goto escape;
@@ -2085,11 +2086,12 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
 	goto escape;
       }
       wtmp = (Ffidl_Int64)dtmp;
-      if (dtmp != wtmp)
+      if (dtmp != wtmp) {
 	if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
 	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
 	  goto escape;
 	}
+      }
     } else if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
       Tcl_AppendResult(interp, ", converting callback return value", NULL);
       goto escape;
@@ -2102,11 +2104,12 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
 	goto escape;
       }
       dtmp = (double)ltmp;
-      if (dtmp != ltmp)
+      if (dtmp != ltmp) {
 	if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
 	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
 	  goto escape;
 	}
+      }
 #if HAVE_WIDE_INT
     } else if (obj->typePtr == ffidl_wideInt_ObjType) {
       if (Tcl_GetWideIntFromObj(interp, obj, &wtmp) == TCL_ERROR) {
@@ -2114,11 +2117,12 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
 	goto escape;
       }
       dtmp = (double)wtmp;
-      if (dtmp != wtmp)
+      if (dtmp != wtmp) {
 	if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
 	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
 	  goto escape;
 	}
+      }
 #endif
     } else if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
       Tcl_AppendResult(interp, ", converting callback return value", NULL);
@@ -2285,7 +2289,6 @@ static void callback_callback(void *user_data, va_alist alist)
 	Tcl_DecrRefCount(objv[i]);
       }
       goto escape;
-      continue;
     }
     Tcl_IncrRefCount(objv[i]);
   }
@@ -2324,11 +2327,12 @@ static void callback_callback(void *user_data, va_alist alist)
 	goto escape;
       }
       wtmp = (Ffidl_Int64)dtmp;
-      if (dtmp != wtmp)
+      if (dtmp != wtmp) {
 	if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
 	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
 	  goto escape;
 	}
+      }
     } else if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
       Tcl_AppendResult(interp, ", converting callback return value", NULL);
       goto escape;
@@ -2341,11 +2345,12 @@ static void callback_callback(void *user_data, va_alist alist)
 	goto escape;
       }
       dtmp = (double)ltmp;
-      if (dtmp != ltmp)
+      if (dtmp != ltmp) {
 	if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
 	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
 	  goto escape;
 	}
+      }
 #if HAVE_WIDE_INT
     } else if (obj->typePtr == ffidl_wideInt_ObjType) {
       if (Tcl_GetWideIntFromObj(interp, obj, &wtmp) == TCL_ERROR) {
@@ -2353,11 +2358,12 @@ static void callback_callback(void *user_data, va_alist alist)
 	goto escape;
       }
       dtmp = (double)wtmp;
-      if (dtmp != wtmp)
+      if (dtmp != wtmp) {
 	if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
 	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
 	  goto escape;
 	}
+      }
 #endif
     } else if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
       Tcl_AppendResult(interp, ", converting callback return value", NULL);
@@ -2788,13 +2794,15 @@ static int tcl_ffidl_typedef(ClientData clientData, Tcl_Interp *interp, int objc
       newtype->elements[i] = ttype2;
       /* accumulate the aggregate size and alignment */
       /* align current size to element's alignment */
-      if ((ttype2->alignment-1) & newtype->size)
+      if ((ttype2->alignment-1) & newtype->size) {
 	newtype->size = ((newtype->size-1) | (ttype2->alignment-1)) + 1;
+      }
       /* add the element's size */
       newtype->size += ttype2->size;
       /* bump the aggregate alignment as required */
-      if (ttype2->alignment > newtype->alignment)
+      if (ttype2->alignment > newtype->alignment) {
 	newtype->alignment = ttype2->alignment;
+      }
     }
     newtype->size = ((newtype->size-1) | (newtype->alignment-1)) + 1; /* tail padding as in libffi */
     if (type_prep(newtype) != TCL_OK) {
@@ -2856,9 +2864,11 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
 	if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR)
 	  goto cleanup;
 	wtmp = (Ffidl_Int64)dtmp;
-	if (dtmp != wtmp)
-	  if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR)
+	if (dtmp != wtmp) {
+	  if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
 	    goto cleanup;
+	  }
+	}
       } else if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
 	goto cleanup;
       }
@@ -2971,8 +2981,9 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
       }
       if (Tcl_IsShared(obj)) {
 	obj = Tcl_ObjSetVar2(interp, objv[args_ix+i], NULL, Tcl_DuplicateObj(obj), TCL_LEAVE_ERR_MSG);
-	if (obj == NULL)
+	if (obj == NULL) {
 	  goto cleanup;
+	}
       }
       *(void **)cif->args[i] = (void *)Tcl_GetByteArrayFromObj(obj, &itmp);
       /* printf("pointer-var -> %d\n", cif->avalues[i].v_pointer); */
@@ -3055,7 +3066,6 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
     sprintf(buff, "Invalid return type: %d", cif->rtype->typecode);
     Tcl_AppendResult(interp, buff, NULL);
     goto cleanup;
-    return TCL_ERROR;
   }    
   /* done */
   return TCL_OK;
@@ -3503,7 +3513,7 @@ static int tcl_ffidl_stubsymbol(ClientData clientData, Tcl_Interp *interp, int o
   void **stubs = NULL, *address;
   static const char *library_names[] = {
     "tcl", 
-#ifdef LOOKUP_TK_STUBS
+#if defined(LOOKUP_TK_STUBS)
     "tk",
 #endif
     NULL
@@ -3532,7 +3542,7 @@ static int tcl_ffidl_stubsymbol(ClientData clientData, Tcl_Interp *interp, int o
     return TCL_ERROR;
   }
 
-#ifdef LOOKUP_TK_STUBS
+#if defined(LOOKUP_TK_STUBS)
   if (library == LIB_TK) {
     if (MyTkInitStubs(interp, "8.4", 0) == NULL) {
       return TCL_ERROR;
@@ -3626,7 +3636,7 @@ int Ffidl_Init(Tcl_Interp *interp)
   return TCL_OK;
 }
 
-#ifdef LOOKUP_TK_STUBS
+#if defined(LOOKUP_TK_STUBS)
 typedef struct MyTkStubHooks {
     void *tkPlatStubs;
     void *tkIntStubs;
