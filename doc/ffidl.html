@@ -69,7 +69,7 @@
           function from Tcl code:
         </p>
         <pre><code>% package require Ffidl
-0.7
+0.8b0
 % ffidl::callout cputs {pointer-utf8} int [ffidl::symbol libc.so.6 puts]
 % cputs "Hello libc!"
 Hello libc!
@@ -99,7 +99,7 @@ Hello libc!
           libffi or libffcall support, and a libdl implementation.
         </p>
         <p>
-          Ffidl 0.7 is an alpha release. There are configuration details
+          Ffidl 0.8b0 is an alpha release. There are configuration details
           which you will need to attend to by hand in the current release.
           The initial development turned up a few bugs in libffi under
           linux-x86, so users on other architectures should be alert for
@@ -115,6 +115,37 @@ Hello libc!
       </section>
       <section>
         <h2 id="changelog">Changelog</h2>
+        <h3>Ffidl 0.8b0 (pre-release)</h3>
+        <p>
+          Ffidl 0.8b0 has the following changes:
+        </p>
+        <ul>
+          <li><i>Feat</i> support for LLP64 (Windows 64bit)</li>
+          <li><i>Feat</i> support for specifying callback's command prefix</li>
+          <li><i>Feat</i> return callback's function address</li>
+          <li><i>Feat</i> simplify build system using pkg-config</li>
+          <li><i>Feat</i> add <code>ffidl::info NULL</code> that returns the
+          value of <code>NULL</code> pointers for the architecture</li>
+          <li><i>Feat</i> support specifying library binding time and symbol
+          visibility</li>
+          <li><i>Fix</i> check protocol name on non-Windows platforms</li>
+          <li><i>Fix</i> misuse of libffi's return value API</li>
+          <li><i>Fix</i> double-free upon deleting interpreter</li>
+          <li><i>Fix</i> various memory leaks</li>
+          <li><i>Fix</i> crash when retrieving <code>void</code>'s format </li>
+          <li><i>Fix</i> test's usage of uninitialized global variables</li>
+          <li><i>Fix</i> deleting slave interpreters when <code>USE_TCL_LOADFILE</code></li>
+          <li><i>Fix</i> disable <code>long double</code> support if longer
+          than <code>double</code></li>
+          <li><i>Fix</i> building with MinGW</li>
+        </ul>
+        <p>
+          The changes in 0.8b0 were implemented
+          by <a href="mailto:adrian@medranocalvo.com">Adrián Medraño Calvo</a>
+          for <a href="https://www.prs.de">Patzschke + Rasp Software GmbH</a>,
+          and are under BSD License; do not contact the original Ffidl author
+          for support about them.
+        </p>
         <h3>Ffidl 0.7</h3>
         <p>
           Ffidl 0.7 has the following changes since 0.6:
@@ -425,10 +456,10 @@ Hello libc!
                 returns true if Ffidl was configured to use callbacks.
               </dd>
               <dt>
-                <b>::ffidl::info use-ffcall</b>
+                <b>::ffidl::info use-libffcall</b>
               </dt>
               <dd>
-                returns true if Ffidl was configured to use ffcall.
+                returns true if Ffidl was configured to use libffcall.
               </dd>
               <dt>
                 <b>::ffidl::info use-libffi</b>
@@ -579,14 +610,15 @@ Hello libc!
         </p>
         <ul>
           <li>
-            <a href="https://github.com/prs-de/ffidl/tarball/0.7">ffidl-0.7.tar.gz</a>
+            <a href="https://github.com/prs-de/ffidl/tarball/0.8">ffidl-0.8b0.tar.gz</a>
           </li>
           <li>
-            <a href="https://github.com/prs-de/ffidl/zipball/0.7">ffidl-0.7.zip</a>
+            <a href="https://github.com/prs-de/ffidl/zipball/0.8">ffidl-0.8b0.zip</a>
           </li>
         </ul>
         <p>
-          The main <a href="https://github.com/prs-de/ffidl">repository</a> can be accessed via web and <a href="http://git-scm.com">git</a>.
+          The main <a href="https://github.com/prs-de/ffidl">repository</a> can
+          be accessed via web and <a href="http://git-scm.com">git</a>.
         </p>
         <h3>Build</h3>
         <p>
@@ -596,16 +628,55 @@ Hello libc!
           Installation is like for any other TEA extension, minimally it
           consists of:
         </p>
-        <pre><code>tar xzvf ffidl-full.tar.gz
-cd ffidl
-configure &amp;&amp; make</code></pre>
+        <pre><code>tar xzvf ffidl-0.8.tar.gz
+cd ffidl-0.8
+configure &amp;&amp; make &amp;&amp; make install</code></pre>
         <p>
-          Custom configure options are implemented for selecting between
-          libffi and ffcall (--enable-libffi and --enable-ffcall), for
-          excluding callbacks (--disable-callbacks) and for enabling
-          building of the ffidl test functions into the extension
-          (--enable-test).
+          Custom configure options are implemented for selecting between libffi
+          and libffcall (<code>--with-libffi</code>
+          and <code>--with-libffcall</code>), for excluding callbacks
+          (<code>--disable-callbacks</code>) and for enabling building of the
+          ffidl test functions into the extension (<code>--enable-test</code>).
         </p>
+        <h4>Custom libffi or libffcall</h4>
+        <p>
+          Ffidl no longer
+          bundles <a href="https://sourceware.org/libffi">libffi</a>
+          nor <a href="https://www.gnu.org/software/libffcall/">libffcall</a>.
+          Instead, the build system relies on
+          <a href="https://www.freedesktop.org/wiki/Software/pkg-config/">pkgconfig</a>
+          to find the needed objects.  If either library is installed in a
+          non-standard location, use <code>PKG_CONFIG_PATH</code> to point
+          Ffidl's build system to its location:
+        </p>
+        <pre><code># Build libffi
+tar xzvf libffi-3.2.1.tar.gz
+cd libffi-3.2.1
+configure --prefix=/some/path &amp;&amp; make &amp;&amp; make install
+cd ..
+# Build Ffidl
+tar xzvf ffidl-0.8.tar.gz
+cd ffidl-0.8
+configure PKG_CONFIG_PATH=/some/path/lib/pkgconfig &amp;&amp; make &amp;&amp; make install</code></pre>
+        <h4>Building on Windows</h4>
+        <p>
+          The recommended setup for building for Windows is using Cygwing and
+          MinGW.  Assuming Cygwin is properly installed, the following
+          commands on a Cygwin terminal build Ffidl for Win64:
+        </p>
+        <pre><code>setup-x86_64.exe -q -P make,mingw64-x86_64-gcc-core,mingw64-x86_64-tcl,mingw64-x86_64-libffi
+# Build Ffidl
+tar xzvf ffidl-0.8.tar.gz
+cd ffidl-0.8
+./configure \
+    CC=x86_64-w64-mingw32-gcc.exe \
+    CYGPATH='cygpath -m' \
+    --enable-symbols \
+    --with-tcl=/usr/x86_64-w64-mingw32/sys-root/mingw/lib \
+    --prefix=/some/path \
+    --exec-prefix=/some/path \
+    PKG_CONFIG_PATH=/usr/x86_64-w64-mingw32/sys-root/mingw/lib/pkgconfig</code></pre>
+        <h4>Additional notes</h4>
         <p>
           On non-Darwin Unix and on Windows you should edit
           <b>library/ffidlrt.tcl</b> and look at the table of libraries in
@@ -930,10 +1001,10 @@ configure &amp;&amp; make</code></pre>
           <span id="warranty">No Warranty</span>
         </h2>
         <p>
-          Ffidl Version 0.7</br>
-          Copyright &copy; 2015-2016 Patzschke + Rasp Software GmbH,
-          Wiesbaden;</br>
-          Copyright &copy; 2005 by Daniel A. Steffen;</br>
+          Ffidl Version 0.8b0<br>
+          Copyright &copy; 2015-2018 Patzschke + Rasp Software GmbH,
+          Wiesbaden;<br>
+          Copyright &copy; 2005 by Daniel A. Steffen;<br>
           Copyright &copy; 1999 by Roger E Critchlow Jr, Santa Fe, NM, USA.
         </p>
         <p>

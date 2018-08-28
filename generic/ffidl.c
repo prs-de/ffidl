@@ -56,6 +56,16 @@
  * These changes are under BSD License and are
  * Copyright (c) 2015, Patzschke + Rasp Software GmbH, Wiesbaden
  * Author: Adrián Medraño Calvo <amcalvo@prs.de>
+ *
+ * Changes since ffidl 0.7:
+ *  - Support for LLP64 (Win64).
+ *  - Support specifying callback's command prefix.
+ *  - Fix usage of libffi's return value API.
+ *  - Disable long double support if longer than double
+ *  - ... see doc/ffidl.html
+ * These changes are under BSD License and are
+ * Copyright (c) 2018, Patzschke + Rasp Software GmbH, Wiesbaden
+ * Author: Adrián Medraño Calvo <amcalvo@prs.de>
  */
 
 #include <ffidlConfig.h>
