@@ -1,0 +1,114 @@
+#
+# ffidl testing - test loading the extension on multiple interpreters and
+# threads.
+#
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import -force ::tcltest::*
+}
+
+package require Ffidl
+package require Ffidlrt
+
+# Whether threads are supported.
+testConstraint threads [expr {![catch { package require Thread; }]}];
+
+test ffidl-interp-1 {ffidl load on slave interp} -setup {
+    interp create slave;
+} -cleanup {
+    rename slave "";
+} -body {
+    set res "";
+    slave eval {
+	package require Ffidl
+	package require Ffidlrt
+    }
+    return $res;
+} -result ""
+
+test ffidl-interp-2 {ffidl slave types don't conflict} -setup {
+    interp create slave;
+} -cleanup {
+    rename slave "";
+} -body {
+    set res "";
+    ffidl::typedef ffidl-interp-2 int
+    slave eval {
+	package require Ffidl
+	package require Ffidlrt
+	ffidl::typedef ffidl-interp-2 float
+    }
+    return $res;
+} -result ""
+
+test ffidl-interp-3 {ffidl interp cleanup} -setup {
+    interp create slave;
+} -cleanup {
+    rename slave "";
+} -body {
+    set res "";
+    slave eval {
+	package require Ffidl
+	package require Ffidlrt
+	ffidl::typedef s1 int int;
+	ffidl::typedef s1a s1;
+	ffidl::typedef s1b s1;
+    }
+    return $res;
+} -result ""
+
+
+test ffidl-thread-1 {ffidl load on other thread} -constraints {threads} -setup {
+    set tid [::thread::create];
+} -cleanup {
+    ::thread::release $tid;
+} -body {
+    set res "";
+    ::thread::send $tid {
+	package require Ffidl
+	package require Ffidlrt
+    }
+    return $res;
+} -result ""
+
+test ffidl-thread-2 {ffidl slave types don't conflict} -constraints {threads} -setup {
+    set tid [::thread::create];
+} -cleanup {
+    ::thread::release $tid;
+} -body {
+    set res "";
+    ffidl::typedef ffidl-thread-2 int
+    ::thread::send $tid {
+	package require Ffidl
+	package require Ffidlrt
+	ffidl::typedef ffidl-thread-2 int
+    }
+    return $res;
+} -result ""
+
+
+test ffidl-thread-3 {ffidl thread cleanup} -constraints {threads} -setup {
+    set tid [::thread::create];
+} -cleanup {
+    ::thread::release $tid;
+} -body {
+    set res "";
+    ::thread::send $tid {
+	package require Ffidl
+	package require Ffidlrt
+	ffidl::typedef s1 int int;
+	ffidl::typedef s1a s1;
+	ffidl::typedef s1b s1;
+    }
+    return $res;
+} -result ""
+
+
+# cleanup
+::tcltest::cleanupTests
+return
+
+# Local Variables:
+# mode: tcl
+# End:

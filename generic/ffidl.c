@@ -755,6 +755,7 @@ union ffidl_value {
  * the class, and a pointer to the underlying ffi_type.
  */
 struct ffidl_type {
+   int refs;			/* Reference counting */
    size_t size;
    unsigned short typecode;
    unsigned short class;
@@ -872,7 +873,7 @@ static const Tcl_ObjType *ffidl_double_ObjType;
 /*
  * base types, the ffi base types and some additional bits.
  */
-#define init_type(size,type,class,alignment,libtype) { size,type,class|FFIDL_STATIC_TYPE,alignment,0,0,libtype }
+#define init_type(size,type,class,alignment,libtype) { 1/*refs*/, size, type, class|FFIDL_STATIC_TYPE, alignment, 0/*nelts*/, 0/*elements*/, libtype }
 
 static ffidl_type ffidl_type_void = init_type(0, FFIDL_VOID, FFIDL_RET|FFIDL_CBRET, 0, lib_type_void);
 static ffidl_type ffidl_type_char = init_type(SIZEOF_CHAR, FFIDL_CHAR, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_CHAR, lib_type_char);
@@ -1371,6 +1372,7 @@ static ffidl_type *type_alloc(ffidl_client *client, int nelts)
   newtype->typecode = FFIDL_STRUCT;
   newtype->class = FFIDL_ALL;
   newtype->alignment = 0;
+  newtype->refs = 0;
   newtype->nelts = nelts;
   newtype->elements = (ffidl_type **)(newtype+1);
 #if USE_LIBFFI
@@ -1386,6 +1388,17 @@ static ffidl_type *type_alloc(ffidl_client *client, int nelts)
 static void type_free(ffidl_type *type)
 {
   Tcl_Free((void *)type);
+}
+/* maintain reference counts on type's */
+static void type_inc_ref(ffidl_type *type)
+{
+  type->refs += 1;
+}
+static void type_dec_ref(ffidl_type *type)
+{
+  if (--type->refs == 0) {
+    type_free(type);
+  }
 }
 /* prep a type for use by the library */
 static int type_prep(ffidl_type *type)
@@ -2433,8 +2446,9 @@ static void client_delete(ClientData clientData, Tcl_Interp *interp)
   /* free all allocated typedefs */
   for (entry = Tcl_FirstHashEntry(&client->types, &search); entry != NULL; entry = Tcl_NextHashEntry(&search)) {
     ffidl_type *type = Tcl_GetHashValue(entry);
-    if ((type->class & FFIDL_STATIC_TYPE) == 0)
-      type_free(type);
+    if ((type->class & FFIDL_STATIC_TYPE) == 0) {
+      type_dec_ref(type);
+    }
   }
 
   /* free all libs */
@@ -2747,6 +2761,7 @@ static int tcl_ffidl_typedef(ClientData clientData, Tcl_Interp *interp, int objc
     }
     /* define alias */
     type_define(client, tname1, ttype2);
+    type_inc_ref(ttype2);
   } else {
     /* allocate an aggregate type */
     newtype = type_alloc(client, nelts);
@@ -2789,6 +2804,7 @@ static int tcl_ffidl_typedef(ClientData clientData, Tcl_Interp *interp, int objc
     }
     /* define new type */
     type_define(client, tname1, newtype);
+    type_inc_ref(newtype);
   }
   /* return success */
   return TCL_OK;
