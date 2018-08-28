@@ -2047,8 +2047,10 @@ static void client_delete(ClientData clientData, Tcl_Interp *interp)
   /* free all libs */
   for (entry = Tcl_FirstHashEntry(&client->libs, &search); entry != NULL; entry = Tcl_NextHashEntry(&search)) {
     void **libentry = Tcl_GetHashValue(entry);
-#if defined(USE_TCL_DLOPEN) || defined(USE_TCL_LOADFILE)
+#if defined(USE_TCL_DLOPEN)
     ((Tcl_FSUnloadFileProc*)libentry[1])((Tcl_LoadHandle)libentry[0]);
+#elif defined(USE_TCL_LOADFILE)
+    Tcl_FSUnloadFile(interp, (Tcl_LoadHandle)libentry[0]);
 #else
     const char *error;
     ffidlclose(libentry[0], &error);
@@ -2830,7 +2832,7 @@ static int tcl_ffidl_symbol(ClientData clientData, Tcl_Interp *interp, int objc,
 #elif defined(USE_TCL_LOADFILE)
     if (Tcl_LoadFile(interp, objv[1], NULL ,0 ,NULL ,&handle) != TCL_OK)
         return TCL_ERROR;
-    unload = (Tcl_FSUnloadFileProc *)&Tcl_FSUnloadFile;
+    unload = NULL;
 #else
     native = Tcl_UtfToExternalDString(NULL, library, -1, &ds);
     handle = ffidlopen(strlen(native)?native:NULL, &error);
