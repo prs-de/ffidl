@@ -654,6 +654,7 @@ struct ffidl_client {
 struct ffidl_cif {
    int refs;
    ffidl_client *client;
+   int protocol;
    ffidl_type *rtype;
    ffidl_value rvalue;
    void *ret;
@@ -1168,7 +1169,7 @@ static void cif_dec_ref(ffidl_cif *cif)
   }
 }
 /* do any library dependent prep for this cif */
-static int cif_prep(ffidl_cif *cif, int protocol)
+static int cif_prep(ffidl_cif *cif)
 {
 #if USE_LIBFFI
   ffi_type *rtype;
@@ -1189,7 +1190,7 @@ static int cif_prep(ffidl_cif *cif, int protocol)
       cif->use_raw_api = 0;
 #endif
   }
-  if (ffi_prep_cif(&cif->lib_cif, protocol, cif->argc, rtype, cif->lib_atypes) != FFI_OK) {
+  if (ffi_prep_cif(&cif->lib_cif, cif->protocol, cif->argc, rtype, cif->lib_atypes) != FFI_OK) {
     return TCL_ERROR;
   }
 #if FFI_NATIVE_RAW_API
@@ -1283,6 +1284,7 @@ static int cif_parse(Tcl_Interp *interp, ffidl_client *client, Tcl_Obj *args, Tc
   cif = cif_lookup(client, Tcl_DStringValue(&signature));
   if (cif == NULL) {
     cif = cif_alloc(client, argc);
+    cif->protocol = protocol;
     if (cif == NULL) {
       Tcl_AppendResult(interp, "couldn't allocate the ffidl_cif", NULL); 
       Tcl_DStringFree(&signature);
@@ -1304,7 +1306,7 @@ static int cif_parse(Tcl_Interp *interp, ffidl_client *client, Tcl_Obj *args, Tc
 	return TCL_ERROR;
       }
     /* see if we done right */
-    if (cif_prep(cif, protocol) != TCL_OK) {
+    if (cif_prep(cif) != TCL_OK) {
       Tcl_AppendResult(interp, "type definition error", NULL);
       cif_free(cif);
       Tcl_DStringFree(&signature);
