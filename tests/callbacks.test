@@ -13,9 +13,7 @@ set lib [::ffidl::find-lib ffidl_test]
 
 testConstraint callback [llength [info commands ::ffidl::callback]]
 
-test ffidl-callbacks {ffidl callback tests} {callback} {
-    set msg ""
-    
+if {[testConstraint callback]} {
     ::ffidl::callout fchar {pointer-proc char char} char [::ffidl::symbol $lib ffidl_fchar]
     ::ffidl::callout fshort {pointer-proc short short} short [::ffidl::symbol $lib ffidl_fshort]
     ::ffidl::callout fint {pointer-proc int int} int [::ffidl::symbol $lib ffidl_fint]
@@ -23,6 +21,10 @@ test ffidl-callbacks {ffidl callback tests} {callback} {
     ::ffidl::callout flonglong {pointer-proc {long long} {long long}} {long long} [::ffidl::symbol $lib ffidl_flonglong]
     ::ffidl::callout ffloat {pointer-proc float float} float [::ffidl::symbol $lib ffidl_ffloat]
     ::ffidl::callout fdouble {pointer-proc double double} double [::ffidl::symbol $lib ffidl_fdouble]
+}
+
+test ffidl-callbacks {ffidl callback tests} {callback} {
+    set msg ""
     
     set nsuccesses 0
     set ntests 0
