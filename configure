@@ -10140,7 +10140,7 @@ $as_echo "no" >&6; }
 
 if test "${TEA_PLATFORM}" != "windows" ; then
     if test "${TCL_MAJOR_VERSION}" -gt 8 -o \
-        \( "${TCL_MAJOR_VERSION}" -gt 7 -a "${TCL_MINOR_VERSION}" -gt 5 \)
+        \( "${TCL_MAJOR_VERSION}" -eq 8 -a "${TCL_MINOR_VERSION}" -ge 6 \)
     then
 
 $as_echo "#define USE_TCL_LOADFILE 1" >>confdefs.h
