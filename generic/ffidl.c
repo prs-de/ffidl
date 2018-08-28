@@ -345,92 +345,6 @@ typedef void *ffidl_UnloadProc;
 #endif	/* __WIN32__ */
 #endif	/* USE_TCL_DLOPEN */
 
-#if !defined(USE_TCL_DLOPEN) && !defined(USE_TCL_LOADFILE)
-static int ffidlsymfallback(ffidl_LoadHandle handle,
-			    char *nativeSymbolName,
-			    void **address,
-			    char *error)
-{
-  int status = TCL_OK;
-#ifdef __WIN32__
-  /*
-   * Ack, what about data?  I guess they're not particular,
-   * some windows headers declare data as dll import, eg
-   * vc98/include/math.h: _CRTIMP extern double _HUGE;
-   */
-  *address = GetProcAddress(handle, nativeSymbolName);
-  if (!*address) {
-    error = "???";
-    status = TCL_ERROR;
-  }
-#else
-  *address = dlsym(handle, nativeSymbolName);
-  error = dlerror();
-  if (error) {
-    status = TCL_ERROR;
-  }
-#endif /* __WIN32__ */
-  return status;
-}
-#endif /* !USE_TCL_DLOPEN && !USE_TCL_LOADFILE */
-
-static int ffidlsym(Tcl_Interp *interp,
-		    ffidl_LoadHandle handle,
-		    Tcl_Obj *symbolNameObj,
-		    void **address)
-{
-  int status = TCL_OK;
-  char *error = NULL;
-  char *symbolName = NULL;
-  char *nativeSymbolName = NULL;
-  Tcl_DString nds;
-
-  symbolName = Tcl_GetString(symbolNameObj);
-  nativeSymbolName = Tcl_UtfToExternalDString(NULL, symbolName, -1, &nds);
-#if defined(USE_TCL_DLOPEN)
-  *address = TclpFindSymbol(interp, (Tcl_LoadHandle)handle, nativeSymbolName);
-  if (!*address) {
-    error = "TclpFindSymbol() failed";
-    status = TCL_ERROR;
-  }
-#elif defined(USE_TCL_LOADFILE)
-  *address = Tcl_FindSymbol(interp, (Tcl_LoadHandle)handle, nativeSymbolName);
-  if (!*address) {
-    error = "Tcl_FindSymbol() failed";
-    status = TCL_ERROR;
-  }
-#else
-  status = ffidlsymfallback(handle, nativeSymbolName, address, error);
-  if (status != TCL_OK) {
-    /*
-     * Some platforms still add an underscore to the beginning of symbol
-     * names.  If we can't find a name without an underscore, try again
-     * with the underscore.
-     */
-    char *newNativeSymbolName = NULL;
-    Tcl_DString uds;
-    char *ignoreerror = NULL;
-
-    Tcl_DStringInit(&uds);
-    Tcl_DStringAppend(&uds, "_", 1);
-    Tcl_DStringAppend(&uds, Tcl_DStringValue(&nds), Tcl_DStringLength(&nds));
-    newNativeSymbolName = Tcl_DStringValue(&uds);
-
-    status = ffidlsymfallback(handle, newNativeSymbolName, address, ignoreerror);
-
-    Tcl_DStringFree(&uds);
-  }
-#endif /* USE_TCL_{LOADFILE,DLOPEN} */
-
-  Tcl_DStringFree(&nds);
-
-  if (error) {
-    Tcl_AppendResult(interp, "couldn't find symbol \"", symbolName, "\" : ", error, NULL);
-  }
-
-  return status;
-}
-
 enum ffidl_load_binding {
   FFIDL_LOAD_BINDING_NONE,
   FFIDL_LOAD_BINDING_NOW,
@@ -448,113 +362,6 @@ struct ffidl_load_flags {
   enum ffidl_load_visibility visibility;
 };
 typedef struct ffidl_load_flags ffidl_load_flags;
-
-static int ffidlopen(Tcl_Interp *interp,
-		     Tcl_Obj *libNameObj,
-		     ffidl_load_flags flags,
-		     ffidl_LoadHandle *handle,
-		     ffidl_UnloadProc *unload)
-{
-  int status = TCL_OK;
-#if defined(USE_TCL_DLOPEN)
-  if (flags.binding != FFIDL_LOAD_BINDING_NONE ||
-      flags.visibility != FFIDL_LOAD_VISIBILITY_NONE) {
-    char *libraryName = NULL;
-    libraryName = Tcl_GetString(libNameObj);
-    Tcl_AppendResult(interp, "couldn't load file \"", libraryName, "\" : ",
-		     "loading flags are not supported with USE_TCL_DLOPEN configuration",
-		     (char *) NULL);
-    status = TCL_ERROR;
-  } else {
-    status = TclpDlopen(interp, libNameObj, handle, unload);
-  }
-#elif defined(USE_TCL_LOADFILE)
-  {
-    int tclflags =
-      (flags.visibility == FFIDL_LOAD_VISIBILITY_GLOBAL? TCL_LOAD_GLOBAL : 0) |
-      (flags.binding == FFIDL_LOAD_BINDING_LAZY? TCL_LOAD_LAZY : 0);
-    if (Tcl_LoadFile(interp, libNameObj, NULL, tclflags, NULL, handle) != TCL_OK) {
-      status = TCL_ERROR;
-    }
-  }
-  *unload = NULL;
-#else
-  Tcl_DString ds;
-  char *libraryName = NULL;
-  char *nativeLibraryName = NULL;
-  char *error = NULL;
-
-  libraryName = Tcl_GetString(libNameObj);
-  nativeLibraryName = Tcl_UtfToExternalDString(NULL, libraryName, -1, &ds);
-  nativeLibraryName = strlen(nativeLibraryName) ? nativeLibraryName : NULL;
-
-#ifdef __WIN32__
-  if (flags.binding != FFIDL_LOAD_BINDING_NONE ||
-      flags.visibility != FFIDL_LOAD_VISIBILITY_NONE) {
-    error = "loading flags are not supported under windows";
-    status = TCL_ERROR;
-  } else {
-    *handle = LoadLibraryA(nativeLibraryName);
-    error = *handle ? NULL : "???";
-  }
-#else
-  {
-    int dlflags =
-      (flags.visibility == FFIDL_LOAD_VISIBILITY_LOCAL? RTLD_LOCAL : RTLD_GLOBAL) |
-      (flags.binding == FFIDL_LOAD_BINDING_LAZY? RTLD_LAZY : RTLD_NOW);
-    *handle = dlopen(nativeLibraryName, dlflags);
-    error = dlerror();
-  }
-#endif
-
-  if (*handle == NULL) {
-    Tcl_AppendResult(interp, "couldn't load file \"", libraryName, "\" : ",
-		     error, (char *) NULL);
-    status = TCL_ERROR;
-  } else {
-    *unload = NULL;
-  }
-
-  Tcl_DStringFree(&ds);
-#endif
-
-  return status;
-}
-
-static int ffidlclose(Tcl_Interp *interp,
-		      char *libraryName,
-		      ffidl_LoadHandle handle,
-		      ffidl_UnloadProc unload)
-{
-  int status = TCL_OK;
-  const char *error = NULL;
-#if defined(USE_TCL_DLOPEN)
-  /* NOTE: no error reporting. */
-  ((Tcl_FSUnloadFileProc*)unload)((Tcl_LoadHandle)handle);
-#elif defined(USE_TCL_LOADFILE)
-  status = Tcl_FSUnloadFile(interp, (Tcl_LoadHandle)handle);
-  if (status != TCL_OK) {
-    error = Tcl_GetStringResult(interp);
-  }
-#else
-#ifdef __WIN32__
-  if (!FreeLibrary(handle)) {
-    status = TCL_ERROR;
-    error = "???";
-  }
-#else
-  if (dlclose(handle)) {
-    status = TCL_ERROR;
-    error = dlerror();
-  }
-#endif
-#endif
-  if (status != TCL_OK) {
-    Tcl_AppendResult(interp, "couldn't unload lib \"", libraryName, "\": ",
-		     error, (char *) NULL);
-  }
-  return status;
-}
 
 /*****************************************
  *				  
@@ -964,6 +771,204 @@ static ffidl_type ffidl_type_pointer_proc = init_type(SIZEOF_VOID_P, FFIDL_PTR_P
  *
  * Functions defined in this file.
  */
+
+/*
+ * Dynamic loading
+ */
+#if !defined(USE_TCL_DLOPEN) && !defined(USE_TCL_LOADFILE)
+static int ffidlsymfallback(ffidl_LoadHandle handle,
+			    char *nativeSymbolName,
+			    void **address,
+			    char *error)
+{
+  int status = TCL_OK;
+#ifdef __WIN32__
+  /*
+   * Ack, what about data?  I guess they're not particular,
+   * some windows headers declare data as dll import, eg
+   * vc98/include/math.h: _CRTIMP extern double _HUGE;
+   */
+  *address = GetProcAddress(handle, nativeSymbolName);
+  if (!*address) {
+    error = "???";
+    status = TCL_ERROR;
+  }
+#else
+  *address = dlsym(handle, nativeSymbolName);
+  error = dlerror();
+  if (error) {
+    status = TCL_ERROR;
+  }
+#endif /* __WIN32__ */
+  return status;
+}
+#endif /* !USE_TCL_DLOPEN && !USE_TCL_LOADFILE */
+
+static int ffidlsym(Tcl_Interp *interp,
+		    ffidl_LoadHandle handle,
+		    Tcl_Obj *symbolNameObj,
+		    void **address)
+{
+  int status = TCL_OK;
+  char *error = NULL;
+  char *symbolName = NULL;
+  char *nativeSymbolName = NULL;
+  Tcl_DString nds;
+
+  symbolName = Tcl_GetString(symbolNameObj);
+  nativeSymbolName = Tcl_UtfToExternalDString(NULL, symbolName, -1, &nds);
+#if defined(USE_TCL_DLOPEN)
+  *address = TclpFindSymbol(interp, (Tcl_LoadHandle)handle, nativeSymbolName);
+  if (!*address) {
+    error = "TclpFindSymbol() failed";
+    status = TCL_ERROR;
+  }
+#elif defined(USE_TCL_LOADFILE)
+  *address = Tcl_FindSymbol(interp, (Tcl_LoadHandle)handle, nativeSymbolName);
+  if (!*address) {
+    error = "Tcl_FindSymbol() failed";
+    status = TCL_ERROR;
+  }
+#else
+  status = ffidlsymfallback(handle, nativeSymbolName, address, error);
+  if (status != TCL_OK) {
+    /*
+     * Some platforms still add an underscore to the beginning of symbol
+     * names.  If we can't find a name without an underscore, try again
+     * with the underscore.
+     */
+    char *newNativeSymbolName = NULL;
+    Tcl_DString uds;
+    char *ignoreerror = NULL;
+
+    Tcl_DStringInit(&uds);
+    Tcl_DStringAppend(&uds, "_", 1);
+    Tcl_DStringAppend(&uds, Tcl_DStringValue(&nds), Tcl_DStringLength(&nds));
+    newNativeSymbolName = Tcl_DStringValue(&uds);
+
+    status = ffidlsymfallback(handle, newNativeSymbolName, address, ignoreerror);
+
+    Tcl_DStringFree(&uds);
+  }
+#endif /* USE_TCL_{LOADFILE,DLOPEN} */
+
+  Tcl_DStringFree(&nds);
+
+  if (error) {
+    Tcl_AppendResult(interp, "couldn't find symbol \"", symbolName, "\" : ", error, NULL);
+  }
+
+  return status;
+}
+
+static int ffidlopen(Tcl_Interp *interp,
+		     Tcl_Obj *libNameObj,
+		     ffidl_load_flags flags,
+		     ffidl_LoadHandle *handle,
+		     ffidl_UnloadProc *unload)
+{
+  int status = TCL_OK;
+#if defined(USE_TCL_DLOPEN)
+  if (flags.binding != FFIDL_LOAD_BINDING_NONE ||
+      flags.visibility != FFIDL_LOAD_VISIBILITY_NONE) {
+    char *libraryName = NULL;
+    libraryName = Tcl_GetString(libNameObj);
+    Tcl_AppendResult(interp, "couldn't load file \"", libraryName, "\" : ",
+		     "loading flags are not supported with USE_TCL_DLOPEN configuration",
+		     (char *) NULL);
+    status = TCL_ERROR;
+  } else {
+    status = TclpDlopen(interp, libNameObj, handle, unload);
+  }
+#elif defined(USE_TCL_LOADFILE)
+  {
+    int tclflags =
+      (flags.visibility == FFIDL_LOAD_VISIBILITY_GLOBAL? TCL_LOAD_GLOBAL : 0) |
+      (flags.binding == FFIDL_LOAD_BINDING_LAZY? TCL_LOAD_LAZY : 0);
+    if (Tcl_LoadFile(interp, libNameObj, NULL, tclflags, NULL, handle) != TCL_OK) {
+      status = TCL_ERROR;
+    }
+  }
+  *unload = NULL;
+#else
+  Tcl_DString ds;
+  char *libraryName = NULL;
+  char *nativeLibraryName = NULL;
+  char *error = NULL;
+
+  libraryName = Tcl_GetString(libNameObj);
+  nativeLibraryName = Tcl_UtfToExternalDString(NULL, libraryName, -1, &ds);
+  nativeLibraryName = strlen(nativeLibraryName) ? nativeLibraryName : NULL;
+
+#ifdef __WIN32__
+  if (flags.binding != FFIDL_LOAD_BINDING_NONE ||
+      flags.visibility != FFIDL_LOAD_VISIBILITY_NONE) {
+    error = "loading flags are not supported under windows";
+    status = TCL_ERROR;
+  } else {
+    *handle = LoadLibraryA(nativeLibraryName);
+    error = *handle ? NULL : "???";
+  }
+#else
+  {
+    int dlflags =
+      (flags.visibility == FFIDL_LOAD_VISIBILITY_LOCAL? RTLD_LOCAL : RTLD_GLOBAL) |
+      (flags.binding == FFIDL_LOAD_BINDING_LAZY? RTLD_LAZY : RTLD_NOW);
+    *handle = dlopen(nativeLibraryName, dlflags);
+    error = dlerror();
+  }
+#endif
+
+  if (*handle == NULL) {
+    Tcl_AppendResult(interp, "couldn't load file \"", libraryName, "\" : ",
+		     error, (char *) NULL);
+    status = TCL_ERROR;
+  } else {
+    *unload = NULL;
+  }
+
+  Tcl_DStringFree(&ds);
+#endif
+
+  return status;
+}
+
+static int ffidlclose(Tcl_Interp *interp,
+		      char *libraryName,
+		      ffidl_LoadHandle handle,
+		      ffidl_UnloadProc unload)
+{
+  int status = TCL_OK;
+  const char *error = NULL;
+#if defined(USE_TCL_DLOPEN)
+  /* NOTE: no error reporting. */
+  ((Tcl_FSUnloadFileProc*)unload)((Tcl_LoadHandle)handle);
+#elif defined(USE_TCL_LOADFILE)
+  status = Tcl_FSUnloadFile(interp, (Tcl_LoadHandle)handle);
+  if (status != TCL_OK) {
+    error = Tcl_GetStringResult(interp);
+  }
+#else
+#ifdef __WIN32__
+  if (!FreeLibrary(handle)) {
+    status = TCL_ERROR;
+    error = "???";
+  }
+#else
+  if (dlclose(handle)) {
+    status = TCL_ERROR;
+    error = dlerror();
+  }
+#endif
+#endif
+  if (status != TCL_OK) {
+    Tcl_AppendResult(interp, "couldn't unload lib \"", libraryName, "\": ",
+		     error, (char *) NULL);
+  }
+  return status;
+}
+
+
 /*
  * hash table management
  */
