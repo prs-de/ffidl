@@ -3055,3 +3055,7 @@ MyTkInitStubs(interp, version, exact)
     return actualVersion;
 }
 #endif
+
+/* Local Variables: */
+/* c-basic-offset: 2 */
+/* End: */

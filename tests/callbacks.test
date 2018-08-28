@@ -134,3 +134,7 @@ test ffidl-callbacks {ffidl callback tests} {callback} {
 # cleanup
 ::tcltest::cleanupTests
 return
+
+;; Local Variables:
+;; mode: tcl
+;; End:
