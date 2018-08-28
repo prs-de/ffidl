@@ -2945,7 +2945,6 @@ static int tcl_ffidl_symbol(ClientData clientData, Tcl_Interp *interp, int objc,
   Tcl_LoadHandle handle;
   Tcl_FSUnloadFileProc *unload;
 #else
-  Tcl_DString newName;
   void *handle, *unload;
 #endif
   ffidl_client *client = (ffidl_client *)clientData;
@@ -2995,14 +2994,15 @@ static int tcl_ffidl_symbol(ClientData clientData, Tcl_Interp *interp, int objc,
    * names.  If we can't find a name without an underscore, try again
    * with the underscore.
    */
+    Tcl_DString newName;
     Tcl_DStringInit(&newName);
     Tcl_DStringAppend(&newName, "_", 1);
     native = Tcl_DStringAppend(&newName, native, -1);
     address = ffidlsym(handle, native, &error);
     Tcl_DStringFree(&newName);
   }
-  Tcl_DStringFree(&ds);
 #endif
+  Tcl_DStringFree(&ds);
 
   if (error) {
     Tcl_AppendResult(interp, "couldn't find symbol \"", symbol, "\" : ", error, NULL);
