@@ -196,7 +196,7 @@ AS_IF([test "x$with_libffcall" = "xyes"],
 
 AC_MSG_CHECKING([whether to implement callbacks])
 AC_ARG_ENABLE(callbacks, 
-    AC_HELP_STRING([--enable-callbacks],
+    AS_HELP_STRING([--enable-callbacks],
         [implement callbacks, if possible [--enable-callbacks]]), 
     [tcl_ok=$enableval], [tcl_ok=yes])
 AC_MSG_RESULT([$tcl_ok])
@@ -206,7 +206,7 @@ fi
 
 AC_MSG_CHECKING([whether to build ffidl test functions])
 AC_ARG_ENABLE(test, 
-    AC_HELP_STRING([--enable-test],
+    AS_HELP_STRING([--enable-test],
         [build ffidl test functions [--disable-test]]), 
     [tcl_ok=$enableval], [tcl_ok=yes])
 AC_MSG_RESULT([$tcl_ok])
