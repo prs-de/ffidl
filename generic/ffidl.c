@@ -1546,7 +1546,7 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
   ffidl_cif *cif = callback->cif;
   Tcl_Obj **objv, *obj, *list;
   char buff[128];
-  int i, status;
+  int i, status, objc;
   long ltmp;
   double dtmp;
 #if HAVE_INT64
@@ -1637,9 +1637,9 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
     }
   }
   /* get command */
-  Tcl_ListObjGetElements(interp, list, &i, &objv);
+  Tcl_ListObjGetElements(interp, list, &objc, &objv);
   /* call */
-  status = Tcl_EvalObjv(interp, cif->argc+1, objv, TCL_EVAL_GLOBAL);
+  status = Tcl_EvalObjv(interp, objc, objv, TCL_EVAL_GLOBAL);
   /* clean up arguments */
   Tcl_DecrRefCount(list);
   if (status == TCL_ERROR) {
@@ -1774,7 +1774,7 @@ static void callback_callback(void *user_data, va_alist alist)
   ffidl_cif *cif = callback->cif;
   Tcl_Obj **objv, *obj, *list;
   char buff[128];
-  int i, status;
+  int i, status, objc;
   long ltmp;
   double dtmp;
 #if HAVE_INT64
@@ -1879,9 +1879,9 @@ static void callback_callback(void *user_data, va_alist alist)
     }
   }
   /* get command */
-  Tcl_ListObjGetElements(interp, list, &i, &objv);
+  Tcl_ListObjGetElements(interp, list, &objc, &objv);
   /* call */
-  status = Tcl_EvalObjv(interp, cif->argc+1, objv, TCL_EVAL_GLOBAL);
+  status = Tcl_EvalObjv(interp, objc, objv, TCL_EVAL_GLOBAL);
   /* clean up arguments */
   Tcl_DecrRefCount(list);
   if (status == TCL_ERROR) {
@@ -2144,6 +2144,12 @@ static ffidl_client *client_alloc(Tcl_Interp *interp)
 /* usage: ::ffidl::info option ?...? */
 static int tcl_ffidl_info(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
+  enum {
+    command_ix,
+    option_ix,
+    minargs
+  };
+
   int i;
   char *arg;
   Tcl_HashTable *table;
@@ -2189,12 +2195,12 @@ static int tcl_ffidl_info(ClientData clientData, Tcl_Interp *interp, int objc, T
     NULL
   };
 
-  if (objc < 2) {
+  if (objc < minargs) {
     Tcl_WrongNumArgs(interp, 1, objv, "option ?arg ...?");
     return TCL_ERROR;
   }
 
-  if (Tcl_GetIndexFromObj(interp, objv[1], options, "option", TCL_EXACT, &i) == TCL_ERROR)
+  if (Tcl_GetIndexFromObj(interp, objv[option_ix], options, "option", TCL_EXACT, &i) == TCL_ERROR)
     return TCL_ERROR;
 
   switch (i) {
@@ -2316,24 +2322,32 @@ static int tcl_ffidl_info(ClientData clientData, Tcl_Interp *interp, int objc, T
   }
   
   /* return an error */
-  Tcl_AppendResult(interp, "missing option implementation: ", Tcl_GetString(objv[1]), NULL);
+  Tcl_AppendResult(interp, "missing option implementation: ", Tcl_GetString(objv[option_ix]), NULL);
   return TCL_ERROR;
 }
 
 /* usage: ffidl-typedef name type1 ?type2 ...? */
 static int tcl_ffidl_typedef(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
+  enum {
+    command_ix,
+    name_ix,
+    type_ix,
+    minargs
+  };
+
   char *tname1, *tname2;
   ffidl_type *newtype, *ttype2;
   int nelts, i;
   ffidl_client *client = (ffidl_client *)clientData;
+
   /* check number of args */
-  if (objc < 3) {
+  if (objc < minargs) {
     Tcl_WrongNumArgs(interp,1,objv,"name type ?...?");
     return TCL_ERROR;
   }
   /* fetch new type name, verify that it is new */
-  tname1 = Tcl_GetString(objv[1]);
+  tname1 = Tcl_GetString(objv[name_ix]);
   if (type_lookup(client, tname1) != NULL) {
     Tcl_AppendResult(interp, "type is already defined: ", tname1, NULL);
     return TCL_ERROR;
@@ -2341,7 +2355,7 @@ static int tcl_ffidl_typedef(ClientData clientData, Tcl_Interp *interp, int objc
   nelts = objc - 2;
   if (nelts == 1) {
     /* define tname1 as an alias for tname2 */
-    tname2 = Tcl_GetString(objv[2]);
+    tname2 = Tcl_GetString(objv[type_ix]);
     ttype2 = type_lookup(client, tname2);
     if (ttype2 == NULL) {
       Tcl_AppendResult(interp, "undefined type: ", tname2, NULL);
@@ -2360,7 +2374,7 @@ static int tcl_ffidl_typedef(ClientData clientData, Tcl_Interp *interp, int objc
     newtype->size = 0;
     newtype->alignment = 0;
     for (i = 0; i < nelts; i += 1) {
-      tname2 = Tcl_GetString(objv[2+i]);
+      tname2 = Tcl_GetString(objv[type_ix+i]);
       ttype2 = type_lookup(client, tname2);
       if (ttype2 == NULL) {
 	type_free(newtype);
@@ -2399,6 +2413,12 @@ static int tcl_ffidl_typedef(ClientData clientData, Tcl_Interp *interp, int objc
 /* usage: depends on the signature defining the ffidl-callout */
 static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
+  enum {
+    command_ix,
+    args_ix,
+    minargs = args_ix
+  };
+
   ffidl_callout *callout = (ffidl_callout *)clientData;
   ffidl_cif *cif = callout->cif;
   int i, itmp;
@@ -2409,15 +2429,16 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
 #endif
   Tcl_Obj *obj = NULL;
   char buff[128];
+
   /* usage check */
-  if (objc-1 != cif->argc) {
+  if (objc-args_ix != cif->argc) {
     Tcl_WrongNumArgs(interp, 1, objv, callout->usage);
     return TCL_ERROR;
   }
   /* fetch and convert argument values */
   for (i = 0; i < cif->argc; i += 1) {
     /* fetch object */
-    obj = objv[1+i];
+    obj = objv[args_ix+i];
     /* fetch value from object and store value into arg value array */
     if (cif->atypes[i]->class & FFIDL_GETINT) {
       if (obj->typePtr == ffidl_double_ObjType) {
@@ -2536,7 +2557,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
       *(void **)cif->args[i] = (void *)Tcl_GetByteArrayFromObj(obj, &itmp);
       continue;
     case FFIDL_PTR_VAR:
-      obj = Tcl_ObjGetVar2(interp, objv[1+i], NULL, TCL_LEAVE_ERR_MSG);
+      obj = Tcl_ObjGetVar2(interp, objv[args_ix+i], NULL, TCL_LEAVE_ERR_MSG);
       if (obj == NULL) return TCL_ERROR;
       if (obj->typePtr != ffidl_bytearray_ObjType) {
 	sprintf(buff, "parameter %d must be a binary string", i);
@@ -2544,7 +2565,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
 	goto cleanup;
       }
       if (Tcl_IsShared(obj)) {
-	obj = Tcl_ObjSetVar2(interp, objv[1+i], NULL, Tcl_DuplicateObj(obj), TCL_LEAVE_ERR_MSG);
+	obj = Tcl_ObjSetVar2(interp, objv[args_ix+i], NULL, Tcl_DuplicateObj(obj), TCL_LEAVE_ERR_MSG);
 	if (obj == NULL)
 	  goto cleanup;
       }
@@ -2557,7 +2578,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
       ffidl_callback *callback;
       ffidl_closure *closure;
       Tcl_DString ds;
-      char *name = Tcl_GetString(objv[1+i]);
+      char *name = Tcl_GetString(objv[args_ix+i]);
       Tcl_DStringInit(&ds);
       if (!strstr(name, "::")) {
         Tcl_Namespace *ns;
@@ -2572,7 +2593,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
       callback = callback_lookup(callout->client, name);
       Tcl_DStringFree(&ds);
       if (callback == NULL) {
-	Tcl_AppendResult(interp, "no callback named \"", Tcl_GetString(objv[1+i]), "\" is defined", NULL);
+	Tcl_AppendResult(interp, "no callback named \"", Tcl_GetString(objv[args_ix+i]), "\" is defined", NULL);
 	goto cleanup;
       }
       closure = &(callback->closure);
@@ -2646,6 +2667,17 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
 /* usage: ffidl-callout name {?argument_type ...?} return_type address ?protocol? */
 static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
+  enum {
+    command_ix,
+    name_ix,
+    args_ix,
+    return_ix,
+    address_ix,
+    protocol_ix,
+    minargs = address_ix + 1,
+    maxargs = protocol_ix + 1,
+  };
+
   char *name;
   void (*fn)();
   int argc, i;
@@ -2656,14 +2688,16 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
   ffidl_cif *cif;
   ffidl_callout *callout;
   ffidl_client *client = (ffidl_client *)clientData;
+  int has_protocol = objc - 1 >= protocol_ix;
+
   /* usage check */
-  if (objc != 5 && objc != 6) {
+  if (objc != minargs && objc != maxargs) {
     Tcl_WrongNumArgs(interp, 1, objv, "name {?argument_type ...?} return_type address ?protocol?");
     return TCL_ERROR;
   }
   /* fetch name */
   Tcl_DStringInit(&ds);
-  name = Tcl_GetString(objv[1]);
+  name = Tcl_GetString(objv[name_ix]);
   if (!strstr(name, "::")) {
     Tcl_Namespace *ns;
     ns = Tcl_GetCurrentNamespace(interp);
@@ -2675,16 +2709,24 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
     name = Tcl_DStringValue(&ds);
   }
   /* fetch cif */
-  if (cif_parse(interp, client, objv[2], objv[3], objc==5 ? NULL : objv[5], &cif, 0) == TCL_ERROR) return TCL_ERROR;
+  if (cif_parse(interp, client,
+		objv[args_ix],
+		objv[return_ix],
+		has_protocol ? objv[protocol_ix] : NULL,
+		&cif, 0) == TCL_ERROR) {
+    return TCL_ERROR;
+  }
   /* fetch function pointer */
-  if (Tcl_GetLongFromObj(interp, objv[4], &tmp) == TCL_ERROR) return TCL_ERROR;
+  if (Tcl_GetLongFromObj(interp, objv[address_ix], &tmp) == TCL_ERROR) {
+    return TCL_ERROR;
+  }
   fn = (void (*)())tmp;
   /* if callout is already defined, redefine it */
   if ((callout = callout_lookup(client, name))) {
     Tcl_DeleteCommand(interp, name);
   }
   /* build the usage string */
-  Tcl_ListObjGetElements(interp, objv[2], &argc, &argv);
+  Tcl_ListObjGetElements(interp, objv[args_ix], &argc, &argv);
   Tcl_DStringInit(&usage);
   for (i = 0; i < argc; i += 1) {
     if (i != 0) Tcl_DStringAppend(&usage, " ", 1);
@@ -2717,6 +2759,16 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
 /* usage: ffidl-callback name {?argument_type ...?} return_type ?protocol? -> */
 static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
+  enum {
+    command_ix,
+    name_ix,
+    args_ix,
+    return_ix,
+    protocol_ix,
+    minargs = return_ix + 1,
+    maxargs = protocol_ix + 1,
+  };
+
   char *name;
   ffidl_cif *cif;
   int tmp;
@@ -2725,14 +2777,16 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
   ffidl_client *client = (ffidl_client *)clientData;
   ffidl_closure *closure;
   void (*fn)();
+  int has_protocol = objc - 1 >= protocol_ix;
+
   /* usage check */
-  if (objc != 4 && objc != 5) {
+  if (objc < minargs || objc > maxargs) {
     Tcl_WrongNumArgs(interp, 1, objv, "name {?argument_type ...?} return_type ?protocol?");
     return TCL_ERROR;
   }
   /* fetch name */
   Tcl_DStringInit(&ds);
-  name = Tcl_GetString(objv[1]);
+  name = Tcl_GetString(objv[name_ix]);
   if (!strstr(name, "::")) {
     Tcl_Namespace *ns;
     ns = Tcl_GetCurrentNamespace(interp);
@@ -2744,7 +2798,13 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
     name = Tcl_DStringValue(&ds);
   }
   /* fetch cif */
-  if (cif_parse(interp, client, objv[2], objv[3], objc == 4 ? NULL : objv[4], &cif, 1) == TCL_ERROR) return TCL_ERROR;
+  if (cif_parse(interp, client,
+		objv[args_ix],
+		objv[return_ix],
+		has_protocol ? objv[protocol_ix] : NULL,
+		&cif, 1) == TCL_ERROR) {
+      goto error;
+  }
   /* if callback is already defined, redefine it */
   if ((callback = callback_lookup(client, name))) {
     cif_dec_ref(callback->cif);
@@ -2752,7 +2812,7 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
     Tcl_Free((void *)callback);
   }
   /* allocate the callback structure */
-  Tcl_ListObjLength(interp, objv[2], &tmp);
+  Tcl_ListObjLength(interp, objv[args_ix], &tmp);
   callback = (ffidl_callback *)Tcl_Alloc(sizeof(ffidl_callback)+tmp*sizeof(Tcl_Obj *));
   if (callback == NULL) {
     cif_dec_ref(cif);
@@ -2806,6 +2866,13 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
 /* usage: ffidl-symbol library symbol -> address */
 static int tcl_ffidl_symbol(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
+  enum {
+    command_ix,
+    library_ix,
+    symbol_ix,
+    nargs
+  };
+
   char *library, *symbol, *native;
   const char *error;
   void *address;
@@ -2819,20 +2886,20 @@ static int tcl_ffidl_symbol(ClientData clientData, Tcl_Interp *interp, int objc,
 #endif
   ffidl_client *client = (ffidl_client *)clientData;
 
-  if (objc != 3) {
+  if (objc != nargs) {
     Tcl_WrongNumArgs(interp,1,objv,"library symbol");
     return TCL_ERROR;
   }
 
-  library = Tcl_GetString(objv[1]);
+  library = Tcl_GetString(objv[library_ix]);
   handle = lib_lookup(client, library, NULL);
 
   if (handle == NULL) {
 #if defined(USE_TCL_DLOPEN)
-    if (TclpDlopen(interp, objv[1], &handle, &unload) != TCL_OK)
+    if (TclpDlopen(interp, objv[library_ix], &handle, &unload) != TCL_OK)
         return TCL_ERROR;
 #elif defined(USE_TCL_LOADFILE)
-    if (Tcl_LoadFile(interp, objv[1], NULL ,0 ,NULL ,&handle) != TCL_OK)
+    if (Tcl_LoadFile(interp, objv[library_ix], NULL ,0 ,NULL ,&handle) != TCL_OK)
         return TCL_ERROR;
     unload = NULL;
 #else
@@ -2848,7 +2915,7 @@ static int tcl_ffidl_symbol(ClientData clientData, Tcl_Interp *interp, int objc,
     lib_define(client, library, handle, unload);
   }
 
-  symbol = Tcl_GetString(objv[2]);
+  symbol = Tcl_GetString(objv[symbol_ix]);
   native = Tcl_UtfToExternalDString(NULL, symbol, -1, &ds);
 #if defined(USE_TCL_DLOPEN)
   address = TclpFindSymbol(interp, (Tcl_LoadHandle)handle, native);
@@ -2884,6 +2951,14 @@ static int tcl_ffidl_symbol(ClientData clientData, Tcl_Interp *interp, int objc,
 /* usage: ffidl-stubsymbol library stubstable symbolnumber -> address */
 static int tcl_ffidl_stubsymbol(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
+  enum {
+    command_ix,
+    library_ix,
+    stubstable_ix,
+    symbol_ix,
+    nargs
+  };
+
   int library, stubstable, symbolnumber; 
   void **stubs = NULL, *address;
   static const char *library_names[] = {
@@ -2907,13 +2982,13 @@ static int tcl_ffidl_stubsymbol(ClientData clientData, Tcl_Interp *interp, int o
     Tcl_WrongNumArgs(interp,1,objv,"library stubstable symbolnumber");
     return TCL_ERROR;
   }
-  if (Tcl_GetIndexFromObj(interp, objv[1], library_names, "library", 0, &library) != TCL_OK) {
+  if (Tcl_GetIndexFromObj(interp, objv[library_ix], library_names, "library", 0, &library) != TCL_OK) {
     return TCL_ERROR;
   }
-  if (Tcl_GetIndexFromObj(interp, objv[2], stubstable_names, "stubstable", 0, &stubstable) != TCL_OK) {
+  if (Tcl_GetIndexFromObj(interp, objv[stubstable_ix], stubstable_names, "stubstable", 0, &stubstable) != TCL_OK) {
     return TCL_ERROR;
   }
-  if (Tcl_GetIntFromObj(interp, objv[3], &symbolnumber) != TCL_OK || symbolnumber < 0) {
+  if (Tcl_GetIntFromObj(interp, objv[symbol_ix], &symbolnumber) != TCL_OK || symbolnumber < 0) {
     return TCL_ERROR;
   }
 
@@ -2938,14 +3013,14 @@ static int tcl_ffidl_stubsymbol(ClientData clientData, Tcl_Interp *interp, int o
   }
 
   if (!stubs) {
-    Tcl_AppendResult(interp, "no stubs table \"", Tcl_GetString(objv[2]), 
-        "\" in library \"", Tcl_GetString(objv[1]), "\"", NULL);
+    Tcl_AppendResult(interp, "no stubs table \"", Tcl_GetString(objv[stubstable_ix]),
+        "\" in library \"", Tcl_GetString(objv[library_ix]), "\"", NULL);
     return TCL_ERROR;
   }
   address = *(stubs + 2 + symbolnumber);
   if (!address) {
-    Tcl_AppendResult(interp, "couldn't find symbol number ", Tcl_GetString(objv[3]),
-        " in stubs table \"", Tcl_GetString(objv[2]), "\"", NULL);
+    Tcl_AppendResult(interp, "couldn't find symbol number ", Tcl_GetString(objv[symbol_ix]),
+        " in stubs table \"", Tcl_GetString(objv[stubstable_ix]), "\"", NULL);
     return TCL_ERROR;
   }
 
