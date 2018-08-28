@@ -117,6 +117,9 @@ static void *tkStubsPtr, *tkPlatStubsPtr, *tkIntStubsPtr, *tkIntPlatStubsPtr, *t
  */
 #include <ffi.h>
 
+#define USE_LIBFFI_RAW_API FFI_NATIVE_RAW_API
+
+
 #ifndef FFI_CLOSURES
 #define HAVE_CLOSURES 0
 #else
@@ -816,14 +819,9 @@ struct ffidl_cif {
    ffidl_client *client;   /* Backpointer to the ffidl_client. */
    int protocol;	   /* Calling convention. */
    ffidl_type *rtype;	   /* Type of return value. */
-   ffidl_value rvalue;	   /* Space to store the return value. */
-   void *ret;		   /* Points to the appropriate place within rvalue. */
    int argc;		   /* Number of arguments. */
    ffidl_type **atypes;	   /* Type of each argument. */
-   ffidl_value *avalues;   /* Value of each argument. */
-   void **args;		   /* Points to the appropriate place within avalues. */
 #if USE_LIBFFI
-   int use_raw_api;		/* Whether to use libffi's raw API. */
    ffi_type **lib_atypes;	/* Pointer to storage area for libffi's internal
 				 * argument types. */
    ffi_cif lib_cif;		/* Libffi's internal data. */
@@ -840,7 +838,12 @@ struct ffidl_callout {
   ffidl_cif *cif;
   void (*fn)();
   ffidl_client *client;
-  char usage[1];
+  void *ret;		   /* Where to store the return value. */
+  void **args;		   /* Where to store each of the arguments' values. */
+  char *usage;
+#if USE_LIBFFI && USE_LIBFFI_RAW_API
+  int use_raw_api;		/* Whether to use libffi's raw API. */
+#endif
 };
 
 #if USE_CALLBACKS
@@ -867,6 +870,10 @@ struct ffidl_callback {
   Tcl_Obj **cmdv;		/* Command prefix Tcl_Objs. */
   Tcl_Interp *interp;
   ffidl_closure closure;
+#if USE_LIBFFI_RAW_API
+  int use_raw_api;		/* Whether to use libffi's raw API. */
+  ptrdiff_t *offsets;		/* Raw argument offsets. */
+#endif
 };
 #endif
 
@@ -1187,88 +1194,6 @@ static Tcl_HashEntry *type_find(ffidl_client *client, ffidl_type *type)
 }
 */
 
-/**
- * Parse an argument or return type specification.
- *
- * After invoking this function, @p type points to the @c ffidl_type
- * corresponding to @p typename, and @p argp is initialized
- *
- * @param[in] interp Tcl interpreter.
- * @param[in] client Ffidle data.
- * @param[in] context Context where the type has been found.
- * @param[in] typename Tcl_Obj whose string representation is a type name.
- * @param[out] typePtr Points to the place to store the pointer to the parsed @c
- *     ffidl_type.
- * @param[in] valueArea Points to the area where values @p argp values should be
- *     stored.
- * @param[out] valuePtr Points to the place to store the address within @p valueArea
- *     where the arguments are to be retrieved or the return value shall be
- *     placed upon callout.
- * @return TCL_OK if successful, TCL_ERROR otherwise.
- */
-static int type_parse(Tcl_Interp *interp, ffidl_client *client,
-		      unsigned context, Tcl_Obj *typename,
-		      ffidl_type **typePtr, ffidl_value *valueArea, void **valuePtr)
-{
-  char *arg = Tcl_GetString(typename);
-  char buff[128];
-
-  /* lookup the type */
-  *typePtr = type_lookup(client, arg);
-  if (*typePtr == NULL) {
-    Tcl_AppendResult(interp, "no type defined for: ", arg, NULL);
-    return TCL_ERROR;
-  }
-  /* test the context */
-  if ((context & (*typePtr)->class) == 0) {
-    Tcl_AppendResult(interp, "type ", arg, " is not permitted in ",
-		     (context&FFIDL_ARG) ? "argument" :  "return",
-		     " context.", NULL);
-    return TCL_ERROR;
-  }
-  /* set arg value pointer */
-  switch ((*typePtr)->typecode) {
-  case FFIDL_VOID:
-    /* libffi depends on this being NULL on some platforms ! */
-    *valuePtr = NULL;
-    break;
-  case FFIDL_STRUCT:
-    /* Will be set to a pointer to the structure's contents. */
-    *valuePtr = NULL;
-    break;
-  case FFIDL_INT:
-  case FFIDL_FLOAT:
-  case FFIDL_DOUBLE:
-#if HAVE_LONG_DOUBLE
-  case FFIDL_LONGDOUBLE:
-#endif
-  case FFIDL_UINT8:
-  case FFIDL_SINT8:
-  case FFIDL_UINT16:
-  case FFIDL_SINT16:
-  case FFIDL_UINT32:
-  case FFIDL_SINT32:
-#if HAVE_INT64
-  case FFIDL_UINT64:
-  case FFIDL_SINT64:
-#endif
-  case FFIDL_PTR:
-  case FFIDL_PTR_BYTE:
-  case FFIDL_PTR_OBJ:
-  case FFIDL_PTR_UTF8:
-  case FFIDL_PTR_UTF16:
-  case FFIDL_PTR_VAR:
-  case FFIDL_PTR_PROC:
-    *valuePtr = (void *)valueArea;
-    break;
-  default:
-    sprintf(buff, "unknown ffidl_type.t = %d", (*typePtr)->typecode);
-    Tcl_AppendResult(interp, buff, NULL);
-    return TCL_ERROR;
-  }
-  return TCL_OK;
-}
-
 /* Determine correct binary formats */
 #if defined WORDS_BIGENDIAN
 #define FFIDL_WIDEINT_FORMAT	"W"
@@ -1512,17 +1437,14 @@ static ffidl_cif *cif_alloc(ffidl_client *client, int argc)
      the argument ffi_type pointers,
      the argument ffidl_types,
      the argument values,
-     and the argument value pointers.
-  */
+     and the argument value pointers. */
   ffidl_cif *cif;
   cif = (ffidl_cif *)Tcl_Alloc(sizeof(ffidl_cif)
-			     +argc*sizeof(ffidl_type*)
-			     +argc*sizeof(ffidl_value)
-			     +argc*sizeof(void*)
+			       +argc*sizeof(ffidl_type*) /* atypes */
 #if USE_LIBFFI
-			     +argc*sizeof(ffi_type*)
-#endif
-			     );
+			       +argc*sizeof(ffi_type*) /* lib_atypes */
+#endif /* USE_LIBFFI */
+    );
   if (cif == NULL) {
     return NULL;
   }
@@ -1531,11 +1453,9 @@ static ffidl_cif *cif_alloc(ffidl_client *client, int argc)
   cif->client = client;
   cif->argc = argc;
   cif->atypes = (ffidl_type **)(cif+1);
-  cif->avalues = (ffidl_value *)(cif->atypes+argc);
-  cif->args = (void **)(cif->avalues+argc);
 #if USE_LIBFFI
-  cif->lib_atypes = (ffi_type **)(cif->args+argc);
-#endif
+  cif->lib_atypes = (ffi_type **)(cif->atypes+argc);
+#endif /* USE_LIBFFI */
   return cif;
 }
 /* free a cif */
@@ -1555,54 +1475,122 @@ static void cif_dec_ref(ffidl_cif *cif)
     cif_free(cif);
   }
 }
+/**
+ * Parse an argument or return type specification.
+ *
+ * After invoking this function, @p type points to the @c ffidl_type
+ * corresponding to @p typename, and @p argp is initialized
+ *
+ * @param[in] interp Tcl interpreter.
+ * @param[in] client Ffidle data.
+ * @param[in] context Context where the type has been found.
+ * @param[in] typename Tcl_Obj whose string representation is a type name.
+ * @param[out] typePtr Points to the place to store the pointer to the parsed @c
+ *     ffidl_type.
+ * @param[in] valueArea Points to the area where values @p argp values should be
+ *     stored.
+ * @param[out] valuePtr Points to the place to store the address within @p valueArea
+ *     where the arguments are to be retrieved or the return value shall be
+ *     placed upon callout.
+ * @return TCL_OK if successful, TCL_ERROR otherwise.
+ */
+static int cif_type_parse(Tcl_Interp *interp, ffidl_client *client, Tcl_Obj *typename, ffidl_type **typePtr)
+{
+  char *arg = Tcl_GetString(typename);
+
+  /* lookup the type */
+  *typePtr = type_lookup(client, arg);
+  if (*typePtr == NULL) {
+    Tcl_AppendResult(interp, "no type defined for: ", arg, NULL);
+    return TCL_ERROR;
+  }
+  return TCL_OK;
+}
+
+/**
+ * Check whether a type may be used in a particular context.
+ * @param[in] interp Tcl interpreter.
+ * @param[in] context The context the type must be allowed to be used.
+ * @param[in] type A ffidl_type.
+ * @param[in] typeNameObj The type's name.
+ */
+static int cif_type_check_context(Tcl_Interp *interp, unsigned context,
+				  Tcl_Obj *typeNameObj, ffidl_type *typePtr)
+{
+  if ((context & typePtr->class) == 0) {
+    char *typeName = Tcl_GetString(typeNameObj);
+    Tcl_AppendResult(interp, "type ", typeName, " is not permitted in ",
+		     (context&FFIDL_ARG) ? "argument" :  "return",
+		     " context.", NULL);
+    return TCL_ERROR;
+  }
+  return TCL_OK;
+}
+
+#if USE_LIBFFI_RAW_API
+/**
+ * Check whether we can support the raw API on the @p cif.
+ */
+static int cif_raw_supported(ffidl_cif *cif)
+{
+  int i;
+  int raw_api_supported;
+
+  raw_api_supported = cif->rtype->typecode != FFIDL_STRUCT;
+
+  for (i = 0; i < cif->argc; i++) {
+    ffidl_type *atype = cif->atypes[i];
+    /* No raw API for structs and long double (fails assertion on
+       libffi < 3.3). */
+    if (atype->typecode == FFIDL_STRUCT
+#if HAVE_LONG_DOUBLE
+	|| atypes->typecode == FFIDL_LONGDOUBLE
+#endif
+      )
+      raw_api_supported = 0;
+  }
+  return raw_api_supported;
+}
+
+/**
+ * Prepare the arguments and return value areas and pointers.
+ */
+static int cif_raw_prep_offsets(ffidl_cif *cif, ptrdiff_t *offsets)
+{
+  int i;
+  ptrdiff_t offset = 0;
+  size_t bytes = ffi_raw_size(&cif->lib_cif);
+
+  for (i = 0; i < cif->argc; i += 1) {
+    offsets[i] = offset;
+    offset += cif->atypes[i]->size;
+    /* align offset, so total bytes is correct */
+    if (offset & (FFI_SIZEOF_ARG-1))
+      offset = (offset|(FFI_SIZEOF_ARG-1))+1;
+  }
+  if (offset != bytes) {
+    fprintf(stderr, "ffidl and libffi disagree about bytes of argument! %d != %d\n", offset, bytes);
+    return TCL_ERROR;
+  }
+  return TCL_OK;
+}
+#endif
+
 /* do any library dependent prep for this cif */
 static int cif_prep(ffidl_cif *cif)
 {
 #if USE_LIBFFI
-  ffi_type *rtype;
+  ffi_type *lib_rtype;
   int i;
-  rtype = cif->rtype->lib_type;
-#if FFI_NATIVE_RAW_API
-  /* no raw API for structs */
-  cif->use_raw_api = cif->rtype->typecode != FFIDL_STRUCT;
-#else
-  cif->use_raw_api = 0;
-#endif
+  ffi_type **lib_atypes;
+  lib_rtype = cif->rtype->lib_type;
+  lib_atypes = cif->lib_atypes;
   for (i = 0; i < cif->argc; i += 1) {
-    cif->lib_atypes[i] = cif->atypes[i]->lib_type;
-#if FFI_NATIVE_RAW_API
-    if (cif->atypes[i]->typecode == FFIDL_STRUCT
-	|| cif->atypes[i]->typecode == FFIDL_UINT64
-	|| cif->atypes[i]->typecode == FFIDL_SINT64)
-      cif->use_raw_api = 0;
-#endif
+    lib_atypes[i] = cif->atypes[i]->lib_type;
   }
-  if (ffi_prep_cif(&cif->lib_cif, cif->protocol, cif->argc, rtype, cif->lib_atypes) != FFI_OK) {
+  if (ffi_prep_cif(&cif->lib_cif, cif->protocol, cif->argc, lib_rtype, lib_atypes) != FFI_OK) {
     return TCL_ERROR;
   }
-#if FFI_NATIVE_RAW_API
-  if (cif->use_raw_api) {
-    /* rewrite cif->args[i] into a stack image */
-    ptrdiff_t offset = 0;
-    size_t bytes = ffi_raw_size(&cif->lib_cif);
-    /* fprintf(stderr, "using raw api for %d args\n", cif->argc); */
-    for (i = 0; i < cif->argc; i += 1) {
-      /* set args[i] to args[0]+offset */
-      /* fprintf(stderr, "  arg[%d] was %08x ...", i, cif->args[i]); */
-      cif->args[i] = (void *)(((char *)cif->args[0])+offset);
-      /* fprintf(stderr, " becomes %08x\n", cif->args[i]); */
-      /* increment offset */
-      offset += cif->atypes[i]->size;
-      /* align offset, so total bytes is correct */
-      if (offset & (FFI_SIZEOF_ARG-1))
-	offset = (offset|(FFI_SIZEOF_ARG-1))+1;
-    }
-    /* fprintf(stderr, "  final offset %d, bytes %d\n", offset, bytes); */
-    if (offset != bytes) {
-      fprintf(stderr, "ffidl and libffi disagree about bytes of argument! %d != %d\n", offset, bytes);
-    }
-  }
-#endif
 #endif
   return TCL_OK;
 }
@@ -1657,7 +1645,7 @@ static int cif_protocol(Tcl_Interp *interp, Tcl_Obj *obj, int *protocolp, char *
  * parse a cif argument list, return type, and protocol,
  * and find or create it in the cif table.
  */
-static int cif_parse(Tcl_Interp *interp, ffidl_client *client, Tcl_Obj *args, Tcl_Obj *ret, Tcl_Obj *pro, ffidl_cif **cifp, int callbackp)
+static int cif_parse(Tcl_Interp *interp, ffidl_client *client, Tcl_Obj *args, Tcl_Obj *ret, Tcl_Obj *pro, ffidl_cif **cifp)
 {
   int argc, protocol, i;
   Tcl_Obj **argv;
@@ -1691,14 +1679,12 @@ static int cif_parse(Tcl_Interp *interp, ffidl_client *client, Tcl_Obj *args, Tc
       goto error;
     }
     /* parse return value spec */
-    if (type_parse(interp, client, callbackp ? FFIDL_CBRET : FFIDL_RET, ret,
-		   &cif->rtype, &cif->rvalue, &cif->ret) == TCL_ERROR) {
+    if (cif_type_parse(interp, client, ret, &cif->rtype) == TCL_ERROR) {
       goto error;
     }
     /* parse arg specs */
     for (i = 0; i < argc; i += 1)
-      if (type_parse(interp, client, callbackp ? FFIDL_CBARG : FFIDL_ARG, argv[i],
-		     &cif->atypes[i], &cif->avalues[i], &cif->args[i]) == TCL_ERROR) {
+      if (cif_type_parse(interp, client, argv[i], &cif->atypes[i]) == TCL_ERROR) {
 	goto error;
       }
     /* see if we done right */
@@ -1753,19 +1739,122 @@ static void callout_delete(ClientData clientData)
     Tcl_DeleteHashEntry(entry);
   }
 }
+/**
+ * Parse an argument or return type specification.
+ *
+ * After invoking this function, @p type points to the @c ffidl_type
+ * corresponding to @p typename, and @p argp is initialized
+ *
+ * @param[in] interp Tcl interpreter.
+ * @param[in] client Ffidle data.
+ * @param[in] context Context where the type has been found.
+ * @param[in] typename Tcl_Obj whose string representation is a type name.
+ * @param[out] typePtr Points to the place to store the pointer to the parsed @c
+ *     ffidl_type.
+ * @param[in] valueArea Points to the area where values @p argp values should be
+ *     stored.
+ * @param[out] valuePtr Points to the place to store the address within @p valueArea
+ *     where the arguments are to be retrieved or the return value shall be
+ *     placed upon callout.
+ * @return TCL_OK if successful, TCL_ERROR otherwise.
+ */
+static int callout_prep_value(Tcl_Interp *interp, unsigned context,
+			      Tcl_Obj *typeNameObj, ffidl_type *typePtr,
+			      ffidl_value *valueArea, void **valuePtr)
+{
+  char buff[128];
+
+  /* test the context */
+  if (cif_type_check_context(interp, context, typeNameObj, typePtr) != TCL_OK) {
+    return TCL_ERROR;
+  }
+  /* set arg value pointer */
+  switch (typePtr->typecode) {
+  case FFIDL_VOID:
+    /* libffi depends on this being NULL on some platforms ! */
+    *valuePtr = NULL;
+    break;
+  case FFIDL_STRUCT:
+    /* Will be set to a pointer to the structure's contents. */
+    *valuePtr = NULL;
+    break;
+  case FFIDL_INT:
+  case FFIDL_FLOAT:
+  case FFIDL_DOUBLE:
+#if HAVE_LONG_DOUBLE
+  case FFIDL_LONGDOUBLE:
+#endif
+  case FFIDL_UINT8:
+  case FFIDL_SINT8:
+  case FFIDL_UINT16:
+  case FFIDL_SINT16:
+  case FFIDL_UINT32:
+  case FFIDL_SINT32:
+#if HAVE_INT64
+  case FFIDL_UINT64:
+  case FFIDL_SINT64:
+#endif
+  case FFIDL_PTR:
+  case FFIDL_PTR_BYTE:
+  case FFIDL_PTR_OBJ:
+  case FFIDL_PTR_UTF8:
+  case FFIDL_PTR_UTF16:
+  case FFIDL_PTR_VAR:
+  case FFIDL_PTR_PROC:
+    *valuePtr = (void *)valueArea;
+    break;
+  default:
+    sprintf(buff, "unknown ffidl_type.t = %d", typePtr->typecode);
+    Tcl_AppendResult(interp, buff, NULL);
+    return TCL_ERROR;
+  }
+  return TCL_OK;
+}
+
+static int callout_prep(ffidl_callout *callout)
+{
+#if USE_LIBFFI_RAW_API
+  int i;
+  ffidl_cif *cif = callout->cif;
+
+  callout->use_raw_api = cif_raw_supported(cif);
+  callout->use_raw_api = 0;
+
+  if (callout->use_raw_api) {
+    /* rewrite callout->args[i] into a stack image */
+    ptrdiff_t *offsets;
+    offsets = (ptrdiff_t *)Tcl_Alloc(sizeof(ptrdiff_t) * cif->argc);
+    if (TCL_OK != cif_raw_prep_offsets(cif, offsets)) {
+      Tcl_Free((void *)offsets);
+      return TCL_ERROR;
+    }
+    /* fprintf(stderr, "using raw api for %d args\n", cif->argc); */
+    for (i = 0; i < cif->argc; i++) {
+      /* set args[i] to args[0]+offset */
+      /* fprintf(stderr, "  arg[%d] was %08x ...", i, callout->args[i]); */
+      callout->args[i] = (void *)(((char *)callout->args[0])+offsets[i]);
+      /* fprintf(stderr, " becomes %08x\n", callout->args[i]); */
+    }
+    /* fprintf(stderr, "  final offset %d, bytes %d\n", offset, bytes); */
+    Tcl_Free((void *)offsets);
+  }
+#endif
+  return TCL_OK;
+}
+
 /* make a call */
 /* consider what happens if we reenter using the same cif */  
 static void callout_call(ffidl_callout *callout)
 {
   ffidl_cif *cif = callout->cif;
 #if USE_LIBFFI
-#if FFI_NATIVE_RAW_API
-  if (cif->use_raw_api)
-    ffi_raw_call(&cif->lib_cif, callout->fn, cif->ret, (ffi_raw *)cif->args[0]);
+#if USE_LIBFFI_RAW_API
+  if (callout->use_raw_api)
+    ffi_raw_call(&cif->lib_cif, callout->fn, callout->ret, (ffi_raw *)callout->args[0]);
   else
-    ffi_call(&cif->lib_cif, callout->fn, cif->ret, cif->args);
+    ffi_call(&cif->lib_cif, callout->fn, callout->ret, callout->args);
 #else
-  ffi_call(&cif->lib_cif, callout->fn, cif->ret, cif->args);
+  ffi_call(&cif->lib_cif, callout->fn, callout->ret, callout->args);
 #endif
 #elif USE_LIBFFCALL
   av_alist alist;
@@ -1775,42 +1864,42 @@ static void callout_call(ffidl_callout *callout)
     av_start_void(alist,callout->fn);
     break;
   case FFIDL_INT:
-    av_start_int(alist,callout->fn,cif->ret);
+    av_start_int(alist,callout->fn,callout->ret);
     break;
   case FFIDL_FLOAT:
-    av_start_float(alist,callout->fn,cif->ret);
+    av_start_float(alist,callout->fn,callout->ret);
     break;
   case FFIDL_DOUBLE:
-    av_start_double(alist,callout->fn,cif->ret);
+    av_start_double(alist,callout->fn,callout->ret);
     break;
   case FFIDL_UINT8:
-    av_start_uint8(alist,callout->fn,cif->ret);
+    av_start_uint8(alist,callout->fn,callout->ret);
     break;
   case FFIDL_SINT8:
-    av_start_sint8(alist,callout->fn,cif->ret);
+    av_start_sint8(alist,callout->fn,callout->ret);
     break;
   case FFIDL_UINT16:
-    av_start_uint16(alist,callout->fn,cif->ret);
+    av_start_uint16(alist,callout->fn,callout->ret);
     break;
   case FFIDL_SINT16:
-    av_start_sint16(alist,callout->fn,cif->ret);
+    av_start_sint16(alist,callout->fn,callout->ret);
     break;
   case FFIDL_UINT32:
-    av_start_uint32(alist,callout->fn,cif->ret);
+    av_start_uint32(alist,callout->fn,callout->ret);
     break;
   case FFIDL_SINT32:
-    av_start_sint32(alist,callout->fn,cif->ret);
+    av_start_sint32(alist,callout->fn,callout->ret);
     break;
 #if HAVE_INT64
   case FFIDL_UINT64:
-    av_start_uint64(alist,callout->fn,cif->ret);
+    av_start_uint64(alist,callout->fn,callout->ret);
     break;
   case FFIDL_SINT64:
-    av_start_sint64(alist,callout->fn,cif->ret);
+    av_start_sint64(alist,callout->fn,callout->ret);
     break;
 #endif
   case FFIDL_STRUCT:
-    _av_start_struct(alist,callout->fn,cif->rtype->size,cif->rtype->splittable,cif->ret);
+    _av_start_struct(alist,callout->fn,cif->rtype->size,cif->rtype->splittable,callout->ret);
     break;
   case FFIDL_PTR:
   case FFIDL_PTR_OBJ:
@@ -1821,49 +1910,49 @@ static void callout_call(ffidl_callout *callout)
 #if USE_CALLBACKS
   case FFIDL_PTR_PROC:
 #endif
-    av_start_ptr(alist,callout->fn,void *,cif->ret);
+    av_start_ptr(alist,callout->fn,void *,callout->ret);
     break;
   }
 
   for (i = 0; i < cif->argc; i += 1) {
     switch (cif->atypes[i]->typecode) {
     case FFIDL_INT:
-      av_int(alist,*(int *)cif->args[i]);
+      av_int(alist,*(int *)callout->args[i]);
       continue;
     case FFIDL_FLOAT:
-      av_float(alist,*(float *)cif->args[i]);
+      av_float(alist,*(float *)callout->args[i]);
       continue;
     case FFIDL_DOUBLE:
-      av_double(alist,*(double *)cif->args[i]);
+      av_double(alist,*(double *)callout->args[i]);
       continue;
     case FFIDL_UINT8:
-      av_uint8(alist,*(UINT8_T *)cif->args[i]);
+      av_uint8(alist,*(UINT8_T *)callout->args[i]);
       continue;
     case FFIDL_SINT8:
-      av_sint8(alist,*(SINT8_T *)cif->args[i]);
+      av_sint8(alist,*(SINT8_T *)callout->args[i]);
       continue;
     case FFIDL_UINT16:
-      av_uint16(alist,*(UINT16_T *)cif->args[i]);
+      av_uint16(alist,*(UINT16_T *)callout->args[i]);
       continue;
     case FFIDL_SINT16:
-      av_sint16(alist,*(SINT16_T *)cif->args[i]);
+      av_sint16(alist,*(SINT16_T *)callout->args[i]);
       continue;
     case FFIDL_UINT32:
-      av_uint32(alist,*(UINT32_T *)cif->args[i]);
+      av_uint32(alist,*(UINT32_T *)callout->args[i]);
       continue;
     case FFIDL_SINT32:
-      av_sint32(alist,*(SINT32_T *)cif->args[i]);
+      av_sint32(alist,*(SINT32_T *)callout->args[i]);
       continue;
 #if HAVE_INT64
     case FFIDL_UINT64:
-      av_uint64(alist,*(UINT64_T *)cif->args[i]);
+      av_uint64(alist,*(UINT64_T *)callout->args[i]);
       continue;
     case FFIDL_SINT64:
-      av_sint64(alist,*(SINT64_T *)cif->args[i]);
+      av_sint64(alist,*(SINT64_T *)callout->args[i]);
       continue;
 #endif
     case FFIDL_STRUCT:
-      _av_struct(alist,cif->atypes[i]->size,cif->atypes[i]->alignment,cif->args[i]);
+      _av_struct(alist,cif->atypes[i]->size,cif->atypes[i]->alignment,callout->args[i]);
       continue;
     case FFIDL_PTR:
     case FFIDL_PTR_OBJ:
@@ -1874,7 +1963,7 @@ static void callout_call(ffidl_callout *callout)
 #if USE_CALLBACKS
     case FFIDL_PTR_PROC:
 #endif
-      av_ptr(alist,void *,*(void **)cif->args[i]);
+      av_ptr(alist,void *,*(void **)callout->args[i]);
       continue;
     }
     /* Note: change "continue" to "break" if further work must be done here. */
@@ -1986,9 +2075,9 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
   /* fetch and convert argument values */
   for (i = 0; i < cif->argc; i += 1) {
     void *argp;
-#if FFI_NATIVE_RAW_API
-    if (cif->use_raw_api) {
-      ptrdiff_t offset = cif->args[i] - cif->args[0];
+#if USE_LIBFFI_RAW_API
+    if (callback->use_raw_api) {
+      ptrdiff_t offset = callback->offsets[i] - callback->offsets[0];
       argp = (void *)(((char *)args)+offset);
     } else {
       argp = args[i];
@@ -2721,7 +2810,7 @@ static int tcl_ffidl_info(ClientData clientData, Tcl_Interp *interp, int objc, T
 #endif
     return TCL_OK;
   case INFO_USE_LIBFFI_RAW:
-#if FFI_NATIVE_RAW_API
+#if USE_LIBFFI_RAW_API
     Tcl_SetObjResult(interp, Tcl_NewIntObj(1));
 #else
     Tcl_SetObjResult(interp, Tcl_NewIntObj(0));
@@ -2912,43 +3001,43 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
     }
     switch (cif->atypes[i]->typecode) {
     case FFIDL_INT:
-      *(int *)cif->args[i] = (int)ltmp;
+      *(int *)callout->args[i] = (int)ltmp;
       continue;
     case FFIDL_FLOAT:
-      *(float *)cif->args[i] = (float)dtmp;
+      *(float *)callout->args[i] = (float)dtmp;
       continue;
     case FFIDL_DOUBLE:
-      *(double *)cif->args[i] = (double)dtmp;
+      *(double *)callout->args[i] = (double)dtmp;
       continue;
 #if HAVE_LONG_DOUBLE
     case FFIDL_LONGDOUBLE:
-      *(long double *)cif->args[i] = (long double)dtmp;
+      *(long double *)callout->args[i] = (long double)dtmp;
       continue;
 #endif
     case FFIDL_UINT8:
-      *(UINT8_T *)cif->args[i] = (UINT8_T)ltmp;
+      *(UINT8_T *)callout->args[i] = (UINT8_T)ltmp;
       continue;
     case FFIDL_SINT8:
-      *(SINT8_T *)cif->args[i] = (SINT8_T)ltmp;
+      *(SINT8_T *)callout->args[i] = (SINT8_T)ltmp;
       continue;
     case FFIDL_UINT16:
-      *(UINT16_T *)cif->args[i] = (UINT16_T)ltmp;
+      *(UINT16_T *)callout->args[i] = (UINT16_T)ltmp;
       continue;
     case FFIDL_SINT16:
-      *(SINT16_T *)cif->args[i] = (SINT16_T)ltmp;
+      *(SINT16_T *)callout->args[i] = (SINT16_T)ltmp;
       continue;
     case FFIDL_UINT32:
-      *(UINT32_T *)cif->args[i] = (UINT32_T)ltmp;
+      *(UINT32_T *)callout->args[i] = (UINT32_T)ltmp;
       continue;
     case FFIDL_SINT32:
-      *(SINT32_T *)cif->args[i] = (SINT32_T)ltmp;
+      *(SINT32_T *)callout->args[i] = (SINT32_T)ltmp;
       continue;
 #if HAVE_INT64
     case FFIDL_UINT64:
-      *(UINT64_T *)cif->args[i] = (UINT64_T)wtmp;
+      *(UINT64_T *)callout->args[i] = (UINT64_T)wtmp;
       continue;
     case FFIDL_SINT64:
-      *(SINT64_T *)cif->args[i] = (SINT64_T)wtmp;
+      *(SINT64_T *)callout->args[i] = (SINT64_T)wtmp;
       continue;
 #endif
     case FFIDL_STRUCT:
@@ -2957,7 +3046,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
 	Tcl_AppendResult(interp, buff, NULL);
 	goto cleanup;
       }
-      cif->args[i] = (void *)Tcl_GetByteArrayFromObj(obj, &itmp);
+      callout->args[i] = (void *)Tcl_GetByteArrayFromObj(obj, &itmp);
       if (itmp != cif->atypes[i]->size) {
 	sprintf(buff, "parameter %d is the wrong size, %u bytes instead of %lu.", i, itmp, (long)(cif->atypes[i]->size));
 	Tcl_AppendResult(interp, buff, NULL);
@@ -2966,19 +3055,19 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
       continue;
     case FFIDL_PTR:
 #if FFIDL_POINTER_IS_LONG
-      *(void **)cif->args[i] = (void *)ltmp;
+      *(void **)callout->args[i] = (void *)ltmp;
 #else
-      *(void **)cif->args[i] = (void *)wtmp;
+      *(void **)callout->args[i] = (void *)wtmp;
 #endif
       continue;
     case FFIDL_PTR_OBJ:
-      *(void **)cif->args[i] = (void *)obj;
+      *(void **)callout->args[i] = (void *)obj;
       continue;
     case FFIDL_PTR_UTF8:
-      *(void **)cif->args[i] = (void *)Tcl_GetString(obj);
+      *(void **)callout->args[i] = (void *)Tcl_GetString(obj);
       continue;
     case FFIDL_PTR_UTF16:
-      *(void **)cif->args[i] = (void *)Tcl_GetUnicode(obj);
+      *(void **)callout->args[i] = (void *)Tcl_GetUnicode(obj);
       continue;
     case FFIDL_PTR_BYTE:
       if (obj->typePtr != ffidl_bytearray_ObjType) {
@@ -2986,7 +3075,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
 	Tcl_AppendResult(interp, buff, NULL);
 	goto cleanup;
       }
-      *(void **)cif->args[i] = (void *)Tcl_GetByteArrayFromObj(obj, &itmp);
+      *(void **)callout->args[i] = (void *)Tcl_GetByteArrayFromObj(obj, &itmp);
       continue;
     case FFIDL_PTR_VAR:
       obj = Tcl_ObjGetVar2(interp, objv[args_ix+i], NULL, TCL_LEAVE_ERR_MSG);
@@ -3002,7 +3091,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
 	  goto cleanup;
 	}
       }
-      *(void **)cif->args[i] = (void *)Tcl_GetByteArrayFromObj(obj, &itmp);
+      *(void **)callout->args[i] = (void *)Tcl_GetByteArrayFromObj(obj, &itmp);
       /* printf("pointer-var -> %d\n", cif->avalues[i].v_pointer); */
       Tcl_InvalidateStringRep(obj);
       continue;
@@ -3031,9 +3120,9 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
       }
       closure = &(callback->closure);
 #if USE_LIBFFI
-      *(void **)cif->args[i] = (void *)closure->executable;
+      *(void **)callout->args[i] = (void *)closure->executable;
 #elif USE_LIBFFCALL
-      *(void **)cif->args[i] = (void *)closure->lib_closure;
+      *(void **)callout->args[i] = (void *)closure->lib_closure;
 #endif
     }
     continue;
@@ -3050,34 +3139,34 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
     obj = Tcl_NewByteArrayObj(NULL, 0);
     Tcl_SetByteArrayLength(obj, cif->rtype->size);
     Tcl_IncrRefCount(obj);
-    cif->ret = Tcl_GetByteArrayFromObj(obj, &itmp);
+    callout->ret = Tcl_GetByteArrayFromObj(obj, &itmp);
   }
   /* call */
   callout_call(callout);
   /* convert return value */
   switch (cif->rtype->typecode) {
   case FFIDL_VOID:	break;
-  case FFIDL_INT:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(INT, cif->ret))); break;
-  case FFIDL_FLOAT:	Tcl_SetObjResult(interp, Tcl_NewDoubleObj((double)FFIDL_RVALUE_PEEK_UNWIDEN(FLOAT, cif->ret))); break;
-  case FFIDL_DOUBLE:	Tcl_SetObjResult(interp, Tcl_NewDoubleObj((double)FFIDL_RVALUE_PEEK_UNWIDEN(DOUBLE, cif->ret))); break;
+  case FFIDL_INT:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(INT, callout->ret))); break;
+  case FFIDL_FLOAT:	Tcl_SetObjResult(interp, Tcl_NewDoubleObj((double)FFIDL_RVALUE_PEEK_UNWIDEN(FLOAT, callout->ret))); break;
+  case FFIDL_DOUBLE:	Tcl_SetObjResult(interp, Tcl_NewDoubleObj((double)FFIDL_RVALUE_PEEK_UNWIDEN(DOUBLE, callout->ret))); break;
 #if HAVE_LONG_DOUBLE
-  case FFIDL_LONGDOUBLE:Tcl_SetObjResult(interp, Tcl_NewDoubleObj((double)FFIDL_RVALUE_PEEK_UNWIDEN(LONGDOUBLE, cif->ret))); break;
+  case FFIDL_LONGDOUBLE:Tcl_SetObjResult(interp, Tcl_NewDoubleObj((double)FFIDL_RVALUE_PEEK_UNWIDEN(LONGDOUBLE, callout->ret))); break;
 #endif
-  case FFIDL_UINT8:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(UINT8, cif->ret))); break;
-  case FFIDL_SINT8:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(SINT8, cif->ret))); break;
-  case FFIDL_UINT16:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(UINT16, cif->ret))); break;
-  case FFIDL_SINT16:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(SINT16, cif->ret))); break;
-  case FFIDL_UINT32:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(UINT32, cif->ret))); break;
-  case FFIDL_SINT32:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(SINT32, cif->ret))); break;
+  case FFIDL_UINT8:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(UINT8, callout->ret))); break;
+  case FFIDL_SINT8:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(SINT8, callout->ret))); break;
+  case FFIDL_UINT16:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(UINT16, callout->ret))); break;
+  case FFIDL_SINT16:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(SINT16, callout->ret))); break;
+  case FFIDL_UINT32:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(UINT32, callout->ret))); break;
+  case FFIDL_SINT32:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)FFIDL_RVALUE_PEEK_UNWIDEN(SINT32, callout->ret))); break;
 #if HAVE_INT64
-  case FFIDL_UINT64:	Tcl_SetObjResult(interp, Ffidl_NewInt64Obj((Ffidl_Int64)FFIDL_RVALUE_PEEK_UNWIDEN(UINT64, cif->ret))); break;
-  case FFIDL_SINT64:	Tcl_SetObjResult(interp, Ffidl_NewInt64Obj((Ffidl_Int64)FFIDL_RVALUE_PEEK_UNWIDEN(SINT64, cif->ret))); break;
+  case FFIDL_UINT64:	Tcl_SetObjResult(interp, Ffidl_NewInt64Obj((Ffidl_Int64)FFIDL_RVALUE_PEEK_UNWIDEN(UINT64, callout->ret))); break;
+  case FFIDL_SINT64:	Tcl_SetObjResult(interp, Ffidl_NewInt64Obj((Ffidl_Int64)FFIDL_RVALUE_PEEK_UNWIDEN(SINT64, callout->ret))); break;
 #endif
   case FFIDL_STRUCT:	Tcl_SetObjResult(interp, obj); Tcl_DecrRefCount(obj); break;
-  case FFIDL_PTR:	Tcl_SetObjResult(interp, Ffidl_NewPointerObj(FFIDL_RVALUE_PEEK_UNWIDEN(PTR, cif->ret))); break;
-  case FFIDL_PTR_OBJ:	Tcl_SetObjResult(interp, (Tcl_Obj *)FFIDL_RVALUE_PEEK_UNWIDEN(PTR, cif->ret)); break;
-  case FFIDL_PTR_UTF8:	Tcl_SetObjResult(interp, Tcl_NewStringObj(FFIDL_RVALUE_PEEK_UNWIDEN(PTR, cif->ret), -1)); break;
-  case FFIDL_PTR_UTF16:	Tcl_SetObjResult(interp, Tcl_NewUnicodeObj(FFIDL_RVALUE_PEEK_UNWIDEN(PTR, cif->ret), -1)); break;
+  case FFIDL_PTR:	Tcl_SetObjResult(interp, Ffidl_NewPointerObj(FFIDL_RVALUE_PEEK_UNWIDEN(PTR, callout->ret))); break;
+  case FFIDL_PTR_OBJ:	Tcl_SetObjResult(interp, (Tcl_Obj *)FFIDL_RVALUE_PEEK_UNWIDEN(PTR, callout->ret)); break;
+  case FFIDL_PTR_UTF8:	Tcl_SetObjResult(interp, Tcl_NewStringObj(FFIDL_RVALUE_PEEK_UNWIDEN(PTR, callout->ret), -1)); break;
+  case FFIDL_PTR_UTF16:	Tcl_SetObjResult(interp, Tcl_NewUnicodeObj(FFIDL_RVALUE_PEEK_UNWIDEN(PTR, callout->ret), -1)); break;
   default:
     sprintf(buff, "Invalid return type: %d", cif->rtype->typecode);
     Tcl_AppendResult(interp, buff, NULL);
@@ -3139,7 +3228,7 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
 		objv[args_ix],
 		objv[return_ix],
 		has_protocol ? objv[protocol_ix] : NULL,
-		&cif, 0) == TCL_ERROR) {
+		&cif) == TCL_ERROR) {
     goto error;
   }
   /* fetch function pointer */
@@ -3156,8 +3245,15 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
     if (i != 0) Tcl_DStringAppend(&usage, " ", 1);
     Tcl_DStringAppend(&usage, Tcl_GetString(argv[i]), -1);
   }
-  /* allocate the callout structure */
-  callout = (ffidl_callout *)Tcl_Alloc(sizeof(ffidl_callout)+Tcl_DStringLength(&usage)+1);
+  /* allocate the callout structure, including:
+     - usage string
+     - argument value pointers
+     - argument values */
+  callout = (ffidl_callout *)Tcl_Alloc(sizeof(ffidl_callout)
+				       +cif->argc*sizeof(void*) /* args */
+				       +sizeof(ffidl_value)	/* rvalue */
+				       +cif->argc*sizeof(ffidl_value) /* avalues */
+				       +Tcl_DStringLength(&usage)+1); /* usage */
   if (callout == NULL) {
     Tcl_AppendResult(interp, "can't allocate ffidl_callout for: ", name, NULL);
     goto error;
@@ -3166,6 +3262,25 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
   callout->cif = cif;
   callout->fn = fn;
   callout->client = client;
+  /* set up return and argument pointers */
+  callout->args = (void **)(callout+1);
+  ffidl_value *rvalue = (ffidl_value *)(callout->args+cif->argc);
+  ffidl_value *avalues = (ffidl_value *)(rvalue+1);
+  /* prep return value */
+  if (callout_prep_value(interp, FFIDL_RET, objv[return_ix], cif->rtype,
+			 rvalue, &callout->ret) == TCL_ERROR) {
+    goto error;
+  }
+  /* prep argument values */
+  for (i = 0; i < argc; i += 1) {
+    if (callout_prep_value(interp, FFIDL_ARG, argv[i], cif->atypes[i],
+			   &avalues[i], &callout->args[i]) == TCL_ERROR) {
+      goto error;
+    }
+  }
+  callout_prep(callout);
+  /* set up usage string */
+  callout->usage = (char *)((avalues+cif->argc));
   strcpy(callout->usage, Tcl_DStringValue(&usage));
   /* free the usage string */
   Tcl_DStringFree(&usage);
@@ -3211,6 +3326,8 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
   void (*fn)();
   int has_protocol = objc - 1 >= protocol_ix;
   int has_cmdprefix = objc - 1 >= cmdprefix_ix;
+  int i, argc = 0;
+  Tcl_Obj **argv = NULL;
 
   /* usage check */
   if (objc < minargs || objc > maxargs) {
@@ -3235,9 +3352,20 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
 		objv[args_ix],
 		objv[return_ix],
 		has_protocol ? objv[protocol_ix] : NULL,
-		&cif, 1) == TCL_ERROR) {
+		&cif) == TCL_ERROR) {
       goto error;
   }
+  /* check types */
+  if (cif_type_check_context(interp, FFIDL_CBRET,
+			     objv[return_ix], cif->rtype) == TCL_ERROR) {
+    goto error;
+  }
+  Tcl_ListObjGetElements(interp, objv[args_ix], &argc, &argv);
+  for (i = 0; i < argc; i += 1)
+    if (cif_type_check_context(interp, FFIDL_ARG,
+			       objv[args_ix], cif->atypes[i]) == TCL_ERROR) {
+      goto error;
+    }
   /* create Tcl proc */
   if (has_cmdprefix) {
     Tcl_Obj *cmdprefix = objv[cmdprefix_ix];
@@ -3261,6 +3389,10 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
   callback = (ffidl_callback *)Tcl_Alloc(sizeof(ffidl_callback)
 					 /* cmdprefix and argument Tcl_Objs */
 					 +(cmdc+cif->argc)*sizeof(Tcl_Obj *)
+#if USE_LIBFFI_RAW_API
+					 /* raw argument offsets */
+					 +cif->argc*sizeof(ptrdiff_t)
+#endif
   );
   if (callback == NULL) {
     Tcl_AppendResult(interp, "can't allocate ffidl_callback for: ", name, NULL);
@@ -3276,15 +3408,24 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
   closure = &(callback->closure);
 #if USE_LIBFFI
   closure->lib_closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->executable));
-#if FFI_NATIVE_RAW_API
-  if (cif->use_raw_api) {
-    if (ffi_prep_raw_closure_loc((ffi_raw_closure *)closure->lib_closure, &callback->cif->lib_cif,
-                                 (void (*)(ffi_cif*,void*,ffi_raw*,void*))callback_callback,
-                                 (void *)callback, closure->executable) != FFI_OK) {
-      Tcl_AppendResult(interp, "libffi can't make raw closure for: ", name, NULL);
+#if USE_LIBFFI_RAW_API
+  callback->offsets = (ptrdiff_t *)(callback->cmdv+cmdc+cif->argc);
+  callback->use_raw_api = cif_raw_supported(cif);
+  callback->use_raw_api = 0;
+  if (callback->use_raw_api &&
+      ffi_prep_raw_closure_loc((ffi_raw_closure *)closure->lib_closure, &callback->cif->lib_cif,
+				 (void (*)(ffi_cif*,void*,ffi_raw*,void*))callback_callback,
+                                 (void *)callback, closure->executable) == FFI_OK) {
+    if (TCL_OK != cif_raw_prep_offsets(callback->cif, callback->offsets)) {
       goto error;
     }
-  } else
+    /* Prepared successfully, continue. */
+  }
+  else
+#endif
+  {
+#if USE_LIBFFI_RAW_API
+    callback->use_raw_api = 0;
 #endif
     if (ffi_prep_closure_loc(closure->lib_closure, &callback->cif->lib_cif,
                             (void (*)(ffi_cif*,void*,void**,void*))callback_callback,
@@ -3292,6 +3433,7 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
       Tcl_AppendResult(interp, "libffi can't make closure for: ", name, NULL);
       goto error;
     }
+  }
 #elif USE_LIBFFCALL
   closure->lib_closure = alloc_callback((callback_function_t)&callback_callback,
 					(void *)callback);
