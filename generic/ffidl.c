@@ -393,94 +393,97 @@ EXTERN int   Ffidl_Init (Tcl_Interp * interp);
 /*
  * values for ffidl_type.type
  */
-#define FFIDL_VOID		0
-#define FFIDL_INT		1
-#define FFIDL_FLOAT		2
-#define FFIDL_DOUBLE		3
-#define FFIDL_LONGDOUBLE	4
-#define FFIDL_UINT8		5
-#define FFIDL_SINT8		6
-#define FFIDL_UINT16		7
-#define FFIDL_SINT16		8
-#define FFIDL_UINT32		9
-#define FFIDL_SINT32		10
-#define FFIDL_UINT64		11
-#define FFIDL_SINT64		12
-#define FFIDL_STRUCT		13
-#define FFIDL_PTR		14	/* integer value pointer */
-#define FFIDL_PTR_BYTE		15	/* byte array pointer */
-#define FFIDL_PTR_UTF8		16	/* UTF-8 string pointer */
-#define FFIDL_PTR_UTF16		17	/* UTF-16 string pointer */
-#define FFIDL_PTR_VAR		18	/* byte array in variable */
-#define FFIDL_PTR_OBJ		19	/* Tcl_Obj pointer */
-#define FFIDL_PTR_PROC		20	/* Pointer to Tcl proc */
+enum ffidl_typecode {
+  FFIDL_VOID		=  0,
+    FFIDL_INT		=  1,
+    FFIDL_FLOAT		=  2,
+    FFIDL_DOUBLE	=  3,
+#if HAVE_LONG_DOUBLE
+    FFIDL_LONGDOUBLE	=  4,
+#endif
+    FFIDL_UINT8		=  5,
+    FFIDL_SINT8		=  6,
+    FFIDL_UINT16	=  7,
+    FFIDL_SINT16	=  8,
+    FFIDL_UINT32	=  9,
+    FFIDL_SINT32	= 10,
+    FFIDL_UINT64	= 11,
+    FFIDL_SINT64	= 12,
+    FFIDL_STRUCT	= 13,
+    FFIDL_PTR		= 14,	/* integer value pointer */
+    FFIDL_PTR_BYTE	= 15,	/* byte array pointer */
+    FFIDL_PTR_UTF8	= 16,	/* UTF-8 string pointer */
+    FFIDL_PTR_UTF16	= 17,	/* UTF-16 string pointer */
+    FFIDL_PTR_VAR	= 18,	/* byte array in variable */
+    FFIDL_PTR_OBJ	= 19,	/* Tcl_Obj pointer */
+    FFIDL_PTR_PROC	= 20,	/* Pointer to Tcl proc */
 
 /*
  * aliases for unsized type names
  */
 #if defined(__CHAR_UNSIGNED__)
-#define FFIDL_CHAR	FFIDL_UINT8
+    FFIDL_CHAR	= FFIDL_UINT8,
 #else
-#define FFIDL_CHAR	FFIDL_SINT8
+    FFIDL_CHAR	= FFIDL_SINT8,
 #endif
 
-#define FFIDL_SCHAR	FFIDL_SINT8
-#define FFIDL_UCHAR	FFIDL_UINT8
+    FFIDL_SCHAR	= FFIDL_SINT8,
+    FFIDL_UCHAR	= FFIDL_UINT8,
 
 #if SIZEOF_SHORT == 2
-#define FFIDL_USHORT	FFIDL_UINT16
-#define FFIDL_SSHORT	FFIDL_SINT16
+    FFIDL_USHORT	= FFIDL_UINT16,
+    FFIDL_SSHORT	= FFIDL_SINT16,
 #elif SIZEOF_SHORT == 4
-#define FFIDL_USHORT	FFIDL_UINT32
-#define FFIDL_SSHORT	FFIDL_SINT32
-#define UINT_T
+    FFIDL_USHORT	= FFIDL_UINT32,
+    FFIDL_SSHORT	= FFIDL_SINT32,
 #elif SIZEOF_SHORT == 8
-#define FFIDL_USHORT	FFIDL_UINT64
-#define FFIDL_SSHORT	FFIDL_SINT64
+    FFIDL_USHORT	= FFIDL_UINT64,
+    FFIDL_SSHORT	= FFIDL_SINT64,
 #else
 #error "no short type"
 #endif
 
 #if SIZEOF_INT == 2
-#define FFIDL_UINT	FFIDL_UINT16
-#define FFIDL_SINT	FFIDL_SINT16
+    FFIDL_UINT	= FFIDL_UINT16,
+    FFIDL_SINT	= FFIDL_SINT16,
 #elif SIZEOF_INT == 4
-#define FFIDL_UINT	FFIDL_UINT32
-#define FFIDL_SINT	FFIDL_SINT32
+    FFIDL_UINT	= FFIDL_UINT32,
+    FFIDL_SINT	= FFIDL_SINT32,
 #elif SIZEOF_INT == 8
-#define FFIDL_UINT	FFIDL_UINT64
-#define FFIDL_SINT	FFIDL_SINT64
+    FFIDL_UINT	= FFIDL_UINT64,
+    FFIDL_SINT	= FFIDL_SINT64,
 #else
 #error "no int type"
 #endif
 
 #if SIZEOF_LONG == 2
-#define FFIDL_ULONG	FFIDL_UINT16
-#define FFIDL_SLONG	FFIDL_SINT16
+    FFIDL_ULONG	= FFIDL_UINT16,
+    FFIDL_SLONG	= FFIDL_SINT16,
 #elif SIZEOF_LONG == 4
-#define FFIDL_ULONG	FFIDL_UINT32
-#define FFIDL_SLONG	FFIDL_SINT32
+    FFIDL_ULONG	= FFIDL_UINT32,
+    FFIDL_SLONG	= FFIDL_SINT32,
 #elif SIZEOF_LONG == 8
-#define FFIDL_ULONG	FFIDL_UINT64
-#define FFIDL_SLONG	FFIDL_SINT64
+    FFIDL_ULONG	= FFIDL_UINT64,
+    FFIDL_SLONG	= FFIDL_SINT64,
 #else
 #error "no long type"
 #endif
 
 #if HAVE_LONG_LONG
 #if SIZEOF_LONG_LONG == 2
-#define FFIDL_ULONGLONG	FFIDL_UINT16
-#define FFIDL_SLONGLONG	FFIDL_SINT16
+    FFIDL_ULONGLONG	= FFIDL_UINT16,
+    FFIDL_SLONGLONG	= FFIDL_SINT16
 #elif SIZEOF_LONG_LONG == 4
-#define FFIDL_ULONGLONG	FFIDL_UINT32
-#define FFIDL_SLONGLONG	FFIDL_SINT32
+    FFIDL_ULONGLONG	= FFIDL_UINT32,
+    FFIDL_SLONGLONG	= FFIDL_SINT32
 #elif SIZEOF_LONG_LONG == 8
-#define FFIDL_ULONGLONG	FFIDL_UINT64
-#define FFIDL_SLONGLONG	FFIDL_SINT64
+    FFIDL_ULONGLONG	= FFIDL_UINT64,
+    FFIDL_SLONGLONG	= FFIDL_SINT64
 #else
 #error "no long long type"
 #endif
 #endif
+};
 
 /*
  * Once more through, decide the alignment and C types
@@ -727,6 +730,7 @@ static int Ffidl_GetPointerFromObj(Tcl_Interp *interp, Tcl_Obj *obj, void **ptr)
 /*
  * forward declarations.
  */
+typedef enum ffidl_typecode ffidl_typecode;
 typedef union ffidl_value ffidl_value;
 typedef struct ffidl_type ffidl_type;
 typedef struct ffidl_client ffidl_client;
@@ -772,7 +776,7 @@ union ffidl_value {
 struct ffidl_type {
    int refs;			/* Reference counting */
    size_t size;			/* Type's size */
-   unsigned short typecode;	/* Type identifier */
+   ffidl_typecode typecode;	/* Type identifier */
    unsigned short class;	/* Type's properties */
    unsigned short alignment;	/* Type's alignment */
    unsigned short nelts;	/* Number of elements */
@@ -1427,10 +1431,10 @@ static int type_prep(ffidl_type *type)
   if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, 0, type->lib_type, NULL) != FFI_OK)
     return TCL_ERROR;
   if (type->size != type->lib_type->size) {
-    fprintf(stderr, "ffidl disagrees with libffi about aggregate size of type %hu! %lu != %lu\n", type->typecode, (long)(type->size), (long)(type->lib_type->size));
+    fprintf(stderr, "ffidl disagrees with libffi about aggregate size of type %u! %lu != %lu\n", type->typecode, (long)(type->size), (long)(type->lib_type->size));
   }
   if (type->alignment != type->lib_type->alignment) {
-    fprintf(stderr, "ffidl disagrees with libffi about aggregate alignment of type  %hu! %hu != %hu\n", type->typecode, type->alignment, type->lib_type->alignment);
+    fprintf(stderr, "ffidl disagrees with libffi about aggregate alignment of type  %u! %hu != %hu\n", type->typecode, type->alignment, type->lib_type->alignment);
   }
 #elif USE_LIBFFCALL
   /* decide if the structure can be split into parts for register return */
