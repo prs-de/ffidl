@@ -173,9 +173,15 @@ static void *tkStubsPtr, *tkPlatStubsPtr, *tkIntStubsPtr, *tkIntPlatStubsPtr, *t
 
 #endif /* #if defined USE_LIBFFI */
 
-#if defined USE_FFCALL
+#if defined USE_LIBFFCALL
 #include <avcall.h>
 #include <callback.h>
+
+/* Compatibility for libffcall < 2.0 */
+#if LIBFFCALL_VERSION < 0x0200
+#define callback_t __TR_function
+#define callback_function_t __VA_function
+#endif
 
 #define HAVE_CLOSURES 1
 #undef HAVE_LONG_DOUBLE		/* no support in ffcall */
@@ -286,7 +292,7 @@ static void *tkStubsPtr, *tkPlatStubsPtr, *tkIntStubsPtr, *tkIntPlatStubsPtr, *t
 #define va_return_sint64	va_return_longlong
 #endif
 
-#endif	/* #if defined USE_FFCALL */
+#endif	/* #if defined USE_LIBFFCALL */
 /*
  * Turn callbacks off if they're not implemented
  */
@@ -764,8 +770,7 @@ struct ffidl_type {
    ffidl_type **elements;	/* Pointer to element types */
 #if USE_LIBFFI
    ffi_type *lib_type;		/* libffi's type data */
-#endif
-#if USE_FFCALL
+#elif USE_LIBFFCALL
    enum __AVtype lib_type;	/* ffcall's type data */
    int splittable;
 #endif
@@ -834,9 +839,8 @@ struct ffidl_closure {
 #if USE_LIBFFI
    ffi_closure *lib_closure;	/* Points to the writtable part of the closure. */
    void *executable;		/* Points to the executable address of the closure. */
-#endif
-#if USE_FFCALL
-   __TR_function lib_closure;
+#elif USE_LIBFFCALL
+   callback_t lib_closure;
 #endif
 };
 /*
@@ -1419,8 +1423,7 @@ static int type_prep(ffidl_type *type)
   if (type->alignment != type->lib_type->alignment) {
     fprintf(stderr, "ffidl disagrees with libffi about aggregate alignment of type  %hu! %hu != %hu\n", type->typecode, type->alignment, type->lib_type->alignment);
   }
-#endif
-#if USE_FFCALL
+#elif USE_LIBFFCALL
   /* decide if the structure can be split into parts for register return */
   /* Determine whether a struct type is word-splittable, i.e. whether each of
    * its components fit into a register.
@@ -1630,11 +1633,10 @@ static int cif_protocol(Tcl_Interp *interp, Tcl_Obj *obj, int *protocolp, char *
     *protocolp = FFI_DEFAULT_ABI;
     *protocolnamep = NULL;
   }
-#endif	/* USE_LIBFFI */
-#if USE_FFCALL
+#elif USE_LIBFFCALL
   *protocolp = 0;
   *protocolnamep = NULL;
-#endif	/* USE_FFCALL */
+#endif	/* USE_LIBFFCALL */
   return TCL_OK;
 }
 /*
@@ -1751,8 +1753,7 @@ static void callout_call(ffidl_callout *callout)
 #else
   ffi_call(&cif->lib_cif, callout->fn, cif->ret, cif->args);
 #endif
-#endif
-#if USE_FFCALL
+#elif USE_LIBFFCALL
   av_alist alist;
   int i;
   switch (cif->rtype->typecode) {
@@ -1909,8 +1910,7 @@ static void callback_free(ffidl_callback *callback)
     }
 #if USE_LIBFFI
     ffi_closure_free(callback->closure.lib_closure);
-#endif
-#if USE_FFCALL
+#elif USE_LIBFFCALL
     free_callback(callback->closure.lib_closure);
 #endif
     Tcl_Free((void *)callback);
@@ -2178,8 +2178,7 @@ escape:
   Tcl_BackgroundError(interp);
   memset(ret, 0, cif->rtype->size);
 }
-#endif
-#if USE_FFCALL
+#elif USE_LIBFFCALL
 static void callback_callback(void *user_data, va_alist alist)
 {
   ffidl_callback *callback = (ffidl_callback *)user_data;
@@ -2410,8 +2409,6 @@ static void callback_callback(void *user_data, va_alist alist)
   return;
 escape:
   Tcl_BackgroundError(interp);
-  memset(&(alist->tmp), 0, cif->rtype->size);
-  if (cif->rtype->typecode == FFIDL_STRUCT) memset(alist->raddr, 0, cif->rtype->size);
 }
 #endif
 #endif
@@ -2590,11 +2587,13 @@ static int tcl_ffidl_info(ClientData clientData, Tcl_Interp *interp, int objc, T
     "use-callbacks",
 #define INFO_USE_FFCALL 14
     "use-ffcall",
-#define INFO_USE_LIBFFI 15
+#define INFO_USE_LIBFFCALL 15
+    "use-libffcall",
+#define INFO_USE_LIBFFI 16
     "use-libffi",
-#define INFO_USE_LIBFFI_RAW 16
+#define INFO_USE_LIBFFI_RAW 17
     "use-libffi-raw",
-#define INFO_NULL 17
+#define INFO_NULL 18
     "NULL",
     NULL
   };
@@ -2672,7 +2671,8 @@ static int tcl_ffidl_info(ClientData clientData, Tcl_Interp *interp, int objc, T
     Tcl_SetObjResult(interp, Ffidl_NewPointerObj(interp));
     return TCL_OK;
   case INFO_USE_FFCALL:
-#if USE_FFCALL
+  case INFO_USE_LIBFFCALL:
+#if USE_LIBFFCALL
     Tcl_SetObjResult(interp, Tcl_NewIntObj(1));
 #else
     Tcl_SetObjResult(interp, Tcl_NewIntObj(0));
@@ -3018,8 +3018,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
       closure = &(callback->closure);
 #if USE_LIBFFI
       *(void **)cif->args[i] = (void *)closure->executable;
-#endif
-#if USE_FFCALL
+#elif USE_LIBFFCALL
       *(void **)cif->args[i] = (void *)closure->lib_closure;
 #endif
     }
@@ -3279,9 +3278,9 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
       Tcl_AppendResult(interp, "libffi can't make closure for: ", name, NULL);
       goto error;
     }
-#endif
-#if USE_FFCALL
-  closure->lib_closure = alloc_callback(callback_callback, callback);
+#elif USE_LIBFFCALL
+  closure->lib_closure = alloc_callback((callback_function_t)&callback_callback,
+					(void *)callback);
 #endif
   /* define the callback */
   callback_define(client, name, callback);
@@ -3290,7 +3289,7 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
   /* Return function pointer to the callback. */
 #if USE_LIBFFI
   fn = (void (*)())closure->executable;
-#elif USE_FFCALL
+#elif USE_LIBFFCALL
   fn = (void (*)())closure->lib_closure;
 #endif
   Tcl_SetObjResult(interp, Ffidl_NewPointerObj(fn));
@@ -3310,7 +3309,7 @@ error:
   if (closure && closure->lib_closure) {
 #if USE_LIBFFI
     ffi_closure_free(closure->lib_closure);
-#elif USE_FFCALL
+#elif USE_LIBFFCALL
     free_callback(closure->lib_closure);
 #endif
   }
