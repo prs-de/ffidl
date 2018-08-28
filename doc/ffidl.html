@@ -332,7 +332,7 @@
           <dt>
             <a name="::ffidl::callback"><b>::ffidl::callback</b>
               <i>name</i> {<i>?arg_type1 ...?</i>} <i>return_type</i>
-              <i>?protocol?</i></a>
+              <i>?protocol?</i> <i>?cmdprefix?</i></a>
           </dt>
           <dd>
             <b>::ffidl::callback</b> declares that a Tcl proc with the
@@ -349,6 +349,11 @@
               used. The only platform which supports <i>protocols</i> is
               Windows where <i>protocol</i> may be <b>cdecl</b>, which is
               the default, or <b>stdcall</b>.
+            </p>
+            <p>
+            The <i>cmdprefix</i> specifies a command prefix to be invoked
+            instead of the proc with the specified name.  The arguments are
+            appended to the command prefix before evaluation.
             </p>
           </dd>
           <dt>

@@ -64,8 +64,10 @@ test ffidl-callbacks {ffidl callback tests} {callback} {
                 set b [expr {rand()}]
             }
         }
-        if {[$func $func.$type $a $b] != [expr {$a+$b}]} {
-            append msg "$func $a $b -> [$func $func.$type $a $b] ?= [expr {$a+$b}]" "\n"
+	set res [$func $func.$type $a $b]
+	set expected [expr {$a+$b}]
+        if {$res != $expected} {
+            append msg "$func $a $b -> $res ?= $expected" "\n"
         } else {
             incr nsuccesses
         }
@@ -130,6 +132,43 @@ test ffidl-callbacks {ffidl callback tests} {callback} {
     set msg
     
 } {0 failures in 8 tests}
+
+test ffidl-callbacks-2 {ffidl callback address} -constraints {callback} -setup {
+    proc sum {a b} { expr {$a + $b} };
+} -cleanup {
+    rename sum "";
+    rename mysum "";
+} -body {
+    set cbptr [ffidl::callback sum {int int} int];
+    ffidl::callout mysum {int int} int $cbptr;
+    mysum 1 1
+} -result 2
+
+test ffidl-callbacks-3 {ffidl callback cmdprefix} -constraints {callback} -setup {
+    proc sum {a b} { expr {$a + $b} };
+} -cleanup {
+    rename sum "";
+    rename myincr "";
+} -body {
+    set cbptr [ffidl::callback incr1 {int} int "" {::sum 1}];
+    ffidl::callout myincr {int} int $cbptr;
+    myincr 1
+} -result 2
+
+test ffidl-callbacks-4 {ffidl callback redefine} -constraints {callback} -setup {
+    proc sum {a b} { expr {$a + $b} }
+    proc substract {a b} { expr {$a - $b} }
+} -cleanup {
+    rename sum "";
+    rename substract "";
+} -body {
+    set res {};
+    ffidl::callback mycb {int int} int "" sum;
+    lappend res [fint mycb 1 1]
+    ffidl::callback mycb {int int} int "" substract;
+    lappend res [fint mycb 1 1]
+    set res
+} -result {2 0}
 
 # cleanup
 ::tcltest::cleanupTests

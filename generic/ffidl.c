@@ -703,7 +703,8 @@ struct ffidl_closure {
  */
 struct ffidl_callback {
   ffidl_cif *cif;
-  Tcl_Obj *proc;
+  int cmdc;			/* Number of command prefix words. */
+  Tcl_Obj **cmdv;		/* Command prefix Tcl_Objs. */
   Tcl_Interp *interp;
   ffidl_closure closure;
 };
@@ -1477,6 +1478,7 @@ static void callout_call(ffidl_callout *callout)
       av_ptr(alist,void *,*(void **)cif->args[i]);
       continue;
     }
+    /* Note: change "continue" to "break" if further work must be done here. */
   }
   av_call(alist);
 #endif
@@ -1507,9 +1509,31 @@ static void *lib_lookup(ffidl_client *client, char *lname, void** unload)
 /*
  * callback management
  */
+/* free a defined callback */
+static void callback_free(ffidl_callback *callback)
+{
+  if (callback) {
+    int i;
+    cif_dec_ref(callback->cif);
+    for (i = 0; i < callback->cmdc; i++) {
+      Tcl_DecrRefCount(callback->cmdv[i]);
+    }
+#if USE_LIBFFI
+    ffi_closure_free(callback->closure.lib_closure);
+#endif
+#if USE_FFCALL
+    free_callback(callback->closure.lib_closure);
+#endif
+    Tcl_Free((void *)callback);
+  }
+}
 /* define a new callback */
 static void callback_define(ffidl_client *client, char *cname, ffidl_callback *callback)
 {
+  ffidl_callback *old_callback = NULL;
+  /* if callback is already defined, clean it up. */
+  old_callback = entry_lookup(&client->callbacks,cname);
+  callback_free(old_callback);
   entry_define(&client->callbacks,cname,(void*)callback);
 }
 /* lookup an existing callback */
@@ -1530,9 +1554,7 @@ static void callback_delete(ffidl_client *client, ffidl_callback *callback)
 {
   Tcl_HashEntry *entry = callback_find(client, callback);
   if (entry) {
-    cif_dec_ref(callback->cif);
-    Tcl_DecrRefCount(callback->proc);
-    Tcl_Free((void *)callback);
+    callback_free(callback);
     Tcl_DeleteHashEntry(entry);
   }
 }
@@ -1544,9 +1566,9 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
   ffidl_callback *callback = (ffidl_callback *)user_data;
   Tcl_Interp *interp = callback->interp;
   ffidl_cif *cif = callback->cif;
-  Tcl_Obj **objv, *obj, *list;
+  Tcl_Obj **objv, *obj;
   char buff[128];
-  int i, status, objc;
+  int i, status;
   long ltmp;
   double dtmp;
 #if HAVE_INT64
@@ -1556,9 +1578,8 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
   if (interp == NULL) {
     Tcl_Panic("callback called out of scope!\n");
   }
-  /* initialize command list */
-  list = Tcl_NewListObj(1, &callback->proc);
-  Tcl_IncrRefCount(list);
+  /* initialize argument list */
+  objv = callback->cmdv+callback->cmdc;
   /* fetch and convert argument values */
   for (i = 0; i < cif->argc; i += 1) {
     void *argp;
@@ -1574,74 +1595,77 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
 #endif
     switch (cif->atypes[i]->typecode) {
     case FFIDL_INT:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewLongObj((long)(*(int *)argp)));
-      continue;
+      objv[i] = Tcl_NewLongObj((long)(*(int *)argp));
+      break;
     case FFIDL_FLOAT:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewDoubleObj((double)(*(float *)argp)));
-      continue;
+      objv[i] = Tcl_NewDoubleObj((double)(*(float *)argp));
+      break;
     case FFIDL_DOUBLE:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewDoubleObj(*(double *)argp));
-      continue;
+      objv[i] = Tcl_NewDoubleObj(*(double *)argp);
+      break;
 #if HAVE_LONG_DOUBLE
     case FFIDL_LONGDOUBLE:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewDoubleObj((double)(*(long double *)argp)));
-      continue;
+      objv[i] = Tcl_NewDoubleObj((double)(*(long double *)argp));
+      break;
 #endif
     case FFIDL_UINT8:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewLongObj((long)(*(UINT8_T *)argp)));
-      continue;
+      objv[i] = Tcl_NewLongObj((long)(*(UINT8_T *)argp));
+      break;
     case FFIDL_SINT8:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewLongObj((long)(*(SINT8_T *)argp)));
-      continue;
+      objv[i] = Tcl_NewLongObj((long)(*(SINT8_T *)argp));
+      break;
     case FFIDL_UINT16:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewLongObj((long)(*(UINT16_T *)argp)));
-      continue;
+      objv[i] = Tcl_NewLongObj((long)(*(UINT16_T *)argp));
+      break;
     case FFIDL_SINT16:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewLongObj((long)(*(SINT16_T *)argp)));
-      continue;
+      objv[i] = Tcl_NewLongObj((long)(*(SINT16_T *)argp));
+      break;
     case FFIDL_UINT32:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewLongObj((long)(*(UINT32_T *)argp)));
-      continue;
+      objv[i] = Tcl_NewLongObj((long)(*(UINT32_T *)argp));
+      break;
     case FFIDL_SINT32:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewLongObj((long)(*(SINT32_T *)argp)));
-      continue;
+      objv[i] = Tcl_NewLongObj((long)(*(SINT32_T *)argp));
+      break;
 #if HAVE_INT64
     case FFIDL_UINT64:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewWideIntOrLong((Tcl_WideIntOrLong)(*(UINT64_T *)argp)));
-      continue;
+      objv[i] = Tcl_NewWideIntOrLong((Tcl_WideIntOrLong)(*(UINT64_T *)argp));
+      break;
     case FFIDL_SINT64:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewWideIntOrLong((Tcl_WideIntOrLong)(*(SINT64_T *)argp)));
-      continue;
+      objv[i] = Tcl_NewWideIntOrLong((Tcl_WideIntOrLong)(*(SINT64_T *)argp));
+      break;
 #endif
     case FFIDL_STRUCT:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewByteArrayObj((unsigned char *)argp, cif->atypes[i]->size));
-      continue;
+      objv[i] = Tcl_NewByteArrayObj((unsigned char *)argp, cif->atypes[i]->size);
+      break;
     case FFIDL_PTR:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewLongObj((long)(*(void **)argp)));
-      continue;
+      objv[i] = Tcl_NewLongObj((long)(*(void **)argp));
+      break;
     case FFIDL_PTR_OBJ:
-      Tcl_ListObjAppendElement(interp, list, *(Tcl_Obj **)argp);
-      continue;
+      objv[i] = *(Tcl_Obj **)argp;
+      break;
     case FFIDL_PTR_UTF8:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewStringObj(*(char **)argp, -1));
-      continue;
+      objv[i] = Tcl_NewStringObj(*(char **)argp, -1);
+      break;
     case FFIDL_PTR_UTF16:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewUnicodeObj(*(Tcl_UniChar **)argp, -1));
-      continue;
+      objv[i] = Tcl_NewUnicodeObj(*(Tcl_UniChar **)argp, -1);
+      break;
     default:
       sprintf(buff, "unimplemented type for callback argument: %d", cif->atypes[i]->typecode);
       Tcl_AppendResult(interp, buff, NULL);
-      Tcl_DecrRefCount(list);
+      while (i-- >= 0) {
+	Tcl_DecrRefCount(objv[i]);
+      }
       goto escape;
       continue;
     }
+    Tcl_IncrRefCount(objv[i]);
   }
-  /* get command */
-  Tcl_ListObjGetElements(interp, list, &objc, &objv);
   /* call */
-  status = Tcl_EvalObjv(interp, objc, objv, TCL_EVAL_GLOBAL);
+  status = Tcl_EvalObjv(interp, callback->cmdc+cif->argc, callback->cmdv, TCL_EVAL_GLOBAL);
   /* clean up arguments */
-  Tcl_DecrRefCount(list);
+  for (i = 0; i < cif->argc; i++) {
+    Tcl_DecrRefCount(objv[i]);
+  }
   if (status == TCL_ERROR) {
     goto escape;
   }
@@ -1772,9 +1796,9 @@ static void callback_callback(void *user_data, va_alist alist)
   ffidl_callback *callback = (ffidl_callback *)user_data;
   Tcl_Interp *interp = callback->interp;
   ffidl_cif *cif = callback->cif;
-  Tcl_Obj **objv, *obj, *list;
+  Tcl_Obj **objv, *obj;
   char buff[128];
-  int i, status, objc;
+  int i, status;
   long ltmp;
   double dtmp;
 #if HAVE_INT64
@@ -1784,9 +1808,8 @@ static void callback_callback(void *user_data, va_alist alist)
   if (interp == NULL) {
     Tcl_Panic("callback called out of scope!\n");
   }
-  /* initialize command list */
-  list = Tcl_NewListObj(1, &callback->proc);
-  Tcl_IncrRefCount(list);
+  /* initialize argument list */
+  objv = callback->cmdv+callback->cmdc;
   /* start */
   switch (cif->rtype->typecode) {
   case FFIDL_VOID:	va_start_void(alist); break;
@@ -1813,77 +1836,78 @@ static void callback_callback(void *user_data, va_alist alist)
     goto escape;
   }
   /* fetch and convert argument values */
-  for (i = 0; i < cif->argc; i += 1) {
+  for (i = 0; i < cif->argc; i++) {
     switch (cif->atypes[i]->typecode) {
     case FFIDL_INT:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewLongObj((long)va_arg_int(alist)));
-      continue;
+      objv[i] = Tcl_NewLongObj((long)va_arg_int(alist));
+      break;
     case FFIDL_FLOAT:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewDoubleObj((double)va_arg_float(alist)));
-      continue;
+      objv[i] = Tcl_NewDoubleObj((double)va_arg_float(alist));
+      break;
     case FFIDL_DOUBLE:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewDoubleObj(va_arg_double(alist)));
-      continue;
+      objv[i] = Tcl_NewDoubleObj(va_arg_double(alist));
+      break;
     case FFIDL_UINT8:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewLongObj((long)va_arg_uint8(alist)));
-      continue;
+      objv[i] = Tcl_NewLongObj((long)va_arg_uint8(alist));
+      break;
     case FFIDL_SINT8:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewLongObj((long)va_arg_sint8(alist)));
-      continue;
+      objv[i] = Tcl_NewLongObj((long)va_arg_sint8(alist));
+      break;
     case FFIDL_UINT16:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewLongObj((long)va_arg_uint16(alist)));
-      continue;
+      objv[i] = Tcl_NewLongObj((long)va_arg_uint16(alist));
+      break;
     case FFIDL_SINT16:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewLongObj((long)va_arg_sint16(alist)));
-      continue;
+      objv[i] = Tcl_NewLongObj((long)va_arg_sint16(alist));
+      break;
     case FFIDL_UINT32:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewLongObj((long)va_arg_uint32(alist)));
-      continue;
+      objv[i] = Tcl_NewLongObj((long)va_arg_uint32(alist));
+      break;
     case FFIDL_SINT32:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewLongObj((long)va_arg_sint32(alist)));
-      continue;
+      objv[i] = Tcl_NewLongObj((long)va_arg_sint32(alist));
+      break;
 #if HAVE_INT64
     case FFIDL_UINT64:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewWideIntOrLong((long)va_arg_uint64(alist)));
-      continue;
+      objv[i] = Tcl_NewWideIntOrLong((long)va_arg_uint64(alist));
+      break;
     case FFIDL_SINT64:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewWideIntOrLong((long)va_arg_sint64(alist)));
-      continue;
+      objv[i] = Tcl_NewWideIntOrLong((long)va_arg_sint64(alist));
+      break;
 #endif
     case FFIDL_STRUCT:
-      Tcl_ListObjAppendElement(interp,
-			       list,
-			       Tcl_NewByteArrayObj(_va_arg_struct(alist,
-								  cif->atypes[i]->size,
-								  cif->atypes[i]->alignment)
-						   , cif->atypes[i]->size));
-      continue;
+      objv[i] = Tcl_NewByteArrayObj(_va_arg_struct(alist,
+						   cif->atypes[i]->size,
+						   cif->atypes[i]->alignment),
+				    cif->atypes[i]->size);
+      break;
     case FFIDL_PTR:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewLongObj((long)va_arg_ptr(alist,void *)));
-      continue;
+      objv[i] = Tcl_NewLongObj((long)va_arg_ptr(alist,void *));
+      break;
     case FFIDL_PTR_OBJ:
-      Tcl_ListObjAppendElement(interp, list, va_arg_ptr(alist,Tcl_Obj *));
-      continue;
+      objv[i] = va_arg_ptr(alist,Tcl_Obj *);
+      break;
     case FFIDL_PTR_UTF8:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewStringObj(va_arg_ptr(alist,char *), -1));
-      continue;
+      objv[i] = Tcl_NewStringObj(va_arg_ptr(alist,char *), -1);
+      break;
     case FFIDL_PTR_UTF16:
-      Tcl_ListObjAppendElement(interp, list, Tcl_NewUnicodeObj(va_arg_ptr(alist,Tcl_UniChar *), -1));
-      continue;
+      objv[i] = Tcl_NewUnicodeObj(va_arg_ptr(alist,Tcl_UniChar *), -1);
+      break;
     default:
       sprintf(buff, "unimplemented type for callback argument: %d", cif->atypes[i]->typecode);
       Tcl_AppendResult(interp, buff, NULL);
-      Tcl_DecrRefCount(list);
+      while (i-- >= 0) {
+	Tcl_DecrRefCount(objv[i]);
+      }
       goto escape;
       continue;
     }
+    Tcl_IncrRefCount(objv[i]);
   }
-  /* get command */
-  Tcl_ListObjGetElements(interp, list, &objc, &objv);
   /* call */
-  status = Tcl_EvalObjv(interp, objc, objv, TCL_EVAL_GLOBAL);
+  status = Tcl_EvalObjv(interp, callback->cmdc+cif->argc, callback->cmdv, TCL_EVAL_GLOBAL);
   /* clean up arguments */
-  Tcl_DecrRefCount(list);
+  for (i = 0; i < cif->argc; i++) {
+    Tcl_DecrRefCount(objv[i]);
+  }
   if (status == TCL_ERROR) {
     goto escape;
   }
@@ -2022,15 +2046,7 @@ static void client_delete(ClientData clientData, Tcl_Interp *interp)
   /* free all callbacks */
   for (entry = Tcl_FirstHashEntry(&client->callbacks, &search); entry != NULL; entry = Tcl_NextHashEntry(&search)) {
     ffidl_callback *callback = Tcl_GetHashValue(entry);
-    cif_dec_ref(callback->cif);
-    Tcl_DecrRefCount(callback->proc);
-#if USE_LIBFFI
-    ffi_closure_free(callback->closure.lib_closure);
-#endif
-#if USE_FFCALL
-    free_callback(callback->closure.lib_closure);
-#endif
-    Tcl_Free((void *)callback);
+    callback_free(callback);
   }
 #endif
 
@@ -2611,10 +2627,12 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
       Tcl_AppendResult(interp, buff, NULL);
       goto cleanup;
     }
+    /* Note: change "continue" to "break" if further work must be done here. */
   }
   /* prepare for structure return */
   if (cif->rtype->typecode == FFIDL_STRUCT) {
-    obj = Tcl_NewByteArrayObj(NULL, cif->rtype->size);
+    obj = Tcl_NewByteArrayObj(NULL, 0);
+    Tcl_SetByteArrayLength(obj, cif->rtype->size);
     Tcl_IncrRefCount(obj);
     cif->ret = Tcl_GetByteArrayFromObj(obj, &itmp);
   }
@@ -2756,7 +2774,7 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
 }
 
 #if USE_CALLBACKS
-/* usage: ffidl-callback name {?argument_type ...?} return_type ?protocol? -> */
+/* usage: ffidl-callback name {?argument_type ...?} return_type ?protocol? ?cmdprefix? -> */
 static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
   enum {
@@ -2765,23 +2783,27 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
     args_ix,
     return_ix,
     protocol_ix,
+    cmdprefix_ix,
     minargs = return_ix + 1,
-    maxargs = protocol_ix + 1,
+    maxargs = cmdprefix_ix + 1,
   };
 
   char *name;
-  ffidl_cif *cif;
-  int tmp;
+  Tcl_Obj *nameObj;
+  ffidl_cif *cif = NULL;
+  Tcl_Obj **cmdv = NULL;
+  int cmdc;
   Tcl_DString ds;
-  ffidl_callback *callback;
+  ffidl_callback *callback = NULL;
   ffidl_client *client = (ffidl_client *)clientData;
-  ffidl_closure *closure;
+  ffidl_closure *closure = NULL;
   void (*fn)();
   int has_protocol = objc - 1 >= protocol_ix;
+  int has_cmdprefix = objc - 1 >= cmdprefix_ix;
 
   /* usage check */
   if (objc < minargs || objc > maxargs) {
-    Tcl_WrongNumArgs(interp, 1, objv, "name {?argument_type ...?} return_type ?protocol?");
+    Tcl_WrongNumArgs(interp, 1, objv, "name {?argument_type ...?} return_type ?protocol? ?cmdprefix?");
     return TCL_ERROR;
   }
   /* fetch name */
@@ -2805,26 +2827,41 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
 		&cif, 1) == TCL_ERROR) {
       goto error;
   }
-  /* if callback is already defined, redefine it */
-  if ((callback = callback_lookup(client, name))) {
-    cif_dec_ref(callback->cif);
-    Tcl_DecrRefCount(callback->proc);
-    Tcl_Free((void *)callback);
+  /* create Tcl proc */
+  if (has_cmdprefix) {
+    Tcl_Obj *cmdprefix = objv[cmdprefix_ix];
+    Tcl_IncrRefCount(cmdprefix);
+    if (Tcl_ListObjGetElements(interp, cmdprefix, &cmdc, &cmdv) != TCL_OK) {
+      goto error;
+    }
+    for (i = 0; i < cmdc; i++) {
+      Tcl_IncrRefCount(cmdv[i]);
+    }
+    Tcl_DecrRefCount(cmdprefix);
+  } else {
+    /* the callback name is the command */
+    nameObj = Tcl_NewStringObj(name, -1);
+    cmdv = &nameObj;
+    cmdc = 1;
+    Tcl_IncrRefCount(nameObj);
   }
+
   /* allocate the callback structure */
-  Tcl_ListObjLength(interp, objv[args_ix], &tmp);
-  callback = (ffidl_callback *)Tcl_Alloc(sizeof(ffidl_callback)+tmp*sizeof(Tcl_Obj *));
+  callback = (ffidl_callback *)Tcl_Alloc(sizeof(ffidl_callback)
+					 /* cmdprefix and argument Tcl_Objs */
+					 +(cmdc+cif->argc)*sizeof(Tcl_Obj *)
+  );
   if (callback == NULL) {
-    cif_dec_ref(cif);
     Tcl_AppendResult(interp, "can't allocate ffidl_callback for: ", name, NULL);
-    return TCL_ERROR;
+    goto error;
   }
   /* initialize the callback */
   callback->cif = cif;
   callback->interp = interp;
-  callback->proc = Tcl_NewStringObj(name, -1);
-  Tcl_IncrRefCount(callback->proc);
-
+  /* store the command prefix' Tcl_Objs */
+  callback->cmdc = cmdc;
+  callback->cmdv = (Tcl_Obj **)(callback+1);
+  memcpy(callback->cmdv, cmdv, cmdc*sizeof(Tcl_Obj *));
   closure = &(callback->closure);
 #if USE_LIBFFI
   closure->lib_closure = ffi_closure_alloc(sizeof(ffi_closure), &(closure->executable));
@@ -2834,7 +2871,7 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
                                  (void (*)(ffi_cif*,void*,ffi_raw*,void*))callback_callback,
                                  (void *)callback, closure->executable) != FFI_OK) {
       Tcl_AppendResult(interp, "libffi can't make raw closure for: ", name, NULL);
-      return TCL_ERROR;
+      goto error;
     }
   } else
 #endif
@@ -2842,7 +2879,7 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
                             (void (*)(ffi_cif*,void*,void**,void*))callback_callback,
                             (void *)callback, closure->executable) != FFI_OK) {
       Tcl_AppendResult(interp, "libffi can't make closure for: ", name, NULL);
-      return TCL_ERROR;
+      goto error;
     }
 #endif
 #if USE_FFCALL
@@ -2861,6 +2898,28 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
   Tcl_SetObjResult(interp, Tcl_NewLongObj((long)fn));
 
   return TCL_OK;
+
+error:
+  Tcl_DStringFree(&ds);
+  if (cif) {
+    cif_dec_ref(cif);
+  }
+  if (cmdv) {
+    for (i = 0; i < cmdc; i++) {
+      Tcl_DecrRefCount(cmdv[i]);
+    }
+  }
+  if (closure && closure->lib_closure) {
+#if USE_LIBFFI
+    ffi_closure_free(closure->lib_closure);
+#elif USE_FFCALL
+    free_callback(closure->lib_closure);
+#endif
+  }
+  if (callback) {
+      Tcl_Free((void *)callback);
+  }
+  return TCL_ERROR;
 }
 #endif
 /* usage: ffidl-symbol library symbol -> address */
