@@ -560,6 +560,48 @@ EXTERN int   Ffidl_Init (Tcl_Interp * interp);
 #define FFIDL_STATIC_TYPE	0x100	/* do not free this type */
 #define FFIDL_GETWIDEINT	0x200	/* arg needs a wideInt value */
 
+/*
+ * Tcl object type used for representing pointers within Tcl.
+ *
+ * We wrap an existing "expr"-compatible Tcl_ObjType, in order to easily support
+ * pointer arithmetic and formatting withing Tcl.  The size of the Tcl_ObjType
+ * needs to match the pointer size of the platform: long on LP64, Tcl_WideInt on
+ * LLP64 (e.g. WIN64).
+ */
+#if SIZEOF_VOID_P == SIZEOF_LONG
+#  define FFIDL_POINTER_IS_LONG 1
+#elif SIZEOF_VOID_P == 8 && defined(HAVE_WIDE_INT)
+#  define FFIDL_POINTER_IS_LONG 0
+#else
+#  error "pointer size not supported"
+#endif
+
+#if FFIDL_POINTER_IS_LONG
+static Tcl_Obj *Ffidl_NewPointerObj(void *ptr) {
+  return Tcl_NewLongObj((long)ptr);
+}
+static int Ffidl_GetPointerFromObj(Tcl_Interp *interp, Tcl_Obj *obj, void **ptr) {
+  int status;
+  long l;
+  status = Tcl_GetLongFromObj(interp, obj, &l);
+  *ptr = (void *)l;
+  return status;
+}
+#  define FFIDL_GETPOINTER FFIDL_GETINT
+#else
+static Tcl_Obj *Ffidl_NewPointerObj(void *ptr) {
+  return Tcl_NewWideIntObj((Tcl_WideInt)ptr);
+}
+static int Ffidl_GetPointerFromObj(Tcl_Interp *interp, Tcl_Obj *obj, void **ptr) {
+  int status;
+  Tcl_WideInt w;
+  status = Tcl_GetWideIntFromObj(interp, obj, &w);
+  *ptr = (void *)w;
+  return status;
+}
+#  define FFIDL_GETPOINTER FFIDL_GETWIDEINT
+#endif
+
 /*****************************************
  *
  * Type definitions for ffidl.
@@ -760,7 +802,7 @@ static ffidl_type ffidl_type_uint32 = init_type(4, FFIDL_UINT32, FFIDL_ALL|FFIDL
 static ffidl_type ffidl_type_sint64 = init_type(8, FFIDL_SINT64, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_INT64, lib_type_sint64);
 static ffidl_type ffidl_type_uint64 = init_type(8, FFIDL_UINT64, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_INT64, lib_type_uint64);
 #endif
-static ffidl_type ffidl_type_pointer = init_type(SIZEOF_VOID_P, FFIDL_PTR, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_VOID_P, lib_type_pointer);
+static ffidl_type ffidl_type_pointer = init_type(SIZEOF_VOID_P, FFIDL_PTR, FFIDL_ALL|FFIDL_GETPOINTER, ALIGNOF_VOID_P, lib_type_pointer);
 static ffidl_type ffidl_type_pointer_obj = init_type(SIZEOF_VOID_P, FFIDL_PTR_OBJ, FFIDL_ARGRET|FFIDL_CBARG|FFIDL_CBRET, ALIGNOF_VOID_P, lib_type_pointer);
 static ffidl_type ffidl_type_pointer_utf8 = init_type(SIZEOF_VOID_P, FFIDL_PTR_UTF8, FFIDL_ARGRET|FFIDL_CBARG, ALIGNOF_VOID_P, lib_type_pointer);
 static ffidl_type ffidl_type_pointer_utf16 = init_type(SIZEOF_VOID_P, FFIDL_PTR_UTF16, FFIDL_ARGRET|FFIDL_CBARG, ALIGNOF_VOID_P, lib_type_pointer);
@@ -1843,7 +1885,7 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
       objv[i] = Tcl_NewByteArrayObj((unsigned char *)argp, cif->atypes[i]->size);
       break;
     case FFIDL_PTR:
-      objv[i] = Tcl_NewLongObj((long)(*(void **)argp));
+      objv[i] = Ffidl_NewPointerObj((*(void **)argp));
       break;
     case FFIDL_PTR_OBJ:
       objv[i] = *(Tcl_Obj **)argp;
@@ -1980,7 +2022,11 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
       memcpy(ret, bytes, cif->rtype->size);
       break;
     }
+#if FFIDL_POINTER_IS_LONG
   case FFIDL_PTR:	*(void **)ret = (void *)ltmp; break;
+#else
+  case FFIDL_PTR:	*(void **)ret = (void *)wtmp; break;
+#endif
   case FFIDL_PTR_OBJ:	*(Tcl_Obj **)ret = obj; break;
   default:
     Tcl_ResetResult(interp);
@@ -2085,7 +2131,7 @@ static void callback_callback(void *user_data, va_alist alist)
 				    cif->atypes[i]->size);
       break;
     case FFIDL_PTR:
-      objv[i] = Tcl_NewLongObj((long)va_arg_ptr(alist,void *));
+      objv[i] = Ffidl_NewPointerObj(va_arg_ptr(alist,void *));
       break;
     case FFIDL_PTR_OBJ:
       objv[i] = va_arg_ptr(alist,Tcl_Obj *);
@@ -2480,7 +2526,7 @@ static int tcl_ffidl_info(ClientData clientData, Tcl_Interp *interp, int objc, T
       Tcl_WrongNumArgs(interp,2,objv,"");
       return TCL_ERROR;
     }
-    Tcl_SetObjResult(interp, Tcl_NewLongObj((long)interp));
+    Tcl_SetObjResult(interp, Ffidl_NewPointerObj(interp));
     return TCL_OK;
   case INFO_USE_FFCALL:
 #if USE_FFCALL
@@ -2753,7 +2799,11 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
       }
       continue;
     case FFIDL_PTR:
+#if FFIDL_POINTER_IS_LONG
       *(void **)cif->args[i] = (void *)ltmp;
+#else
+      *(void **)cif->args[i] = (void *)wtmp;
+#endif
       continue;
     case FFIDL_PTR_OBJ:
       *(void **)cif->args[i] = (void *)obj;
@@ -2865,7 +2915,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
   case FFIDL_SINT64:	Tcl_SetObjResult(interp, Ffidl_NewInt64Obj((Ffidl_Int64)cif->rvalue.v_sint64)); break;
 #endif
   case FFIDL_STRUCT:	Tcl_SetObjResult(interp, obj); Tcl_DecrRefCount(obj); break;
-  case FFIDL_PTR:	Tcl_SetObjResult(interp, Tcl_NewLongObj((long)cif->rvalue.v_pointer)); break;
+  case FFIDL_PTR:	Tcl_SetObjResult(interp, Ffidl_NewPointerObj((long)cif->rvalue.v_pointer)); break;
   case FFIDL_PTR_OBJ:	Tcl_SetObjResult(interp, (Tcl_Obj *)cif->rvalue.v_pointer); break;
   case FFIDL_PTR_UTF8:	Tcl_SetObjResult(interp, Tcl_NewStringObj(cif->rvalue.v_pointer, -1)); break;
   case FFIDL_PTR_UTF16:	Tcl_SetObjResult(interp, Tcl_NewUnicodeObj(cif->rvalue.v_pointer, -1)); break;
@@ -2899,7 +2949,6 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
   char *name;
   void (*fn)();
   int argc, i;
-  long tmp;
   Tcl_Obj **argv;
   Tcl_DString usage, ds;
   Tcl_Command res;
@@ -2936,10 +2985,9 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
     goto error;
   }
   /* fetch function pointer */
-  if (Tcl_GetLongFromObj(interp, objv[address_ix], &tmp) == TCL_ERROR) {
+  if (Ffidl_GetPointerFromObj(interp, objv[address_ix], (void **)&fn) == TCL_ERROR) {
     goto error;
   }
-  fn = (void (*)())tmp;
   /* if callout is already defined, redefine it */
   if ((callout = callout_lookup(client, name))) {
     Tcl_DeleteCommand(interp, name);
@@ -3100,7 +3148,7 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
 #elif USE_FFCALL
   fn = (void (*)())closure->lib_closure;
 #endif
-  Tcl_SetObjResult(interp, Tcl_NewLongObj((long)fn));
+  Tcl_SetObjResult(interp, Ffidl_NewPointerObj(fn));
 
   return TCL_OK;
 
@@ -3304,7 +3352,7 @@ static int tcl_ffidl_symbol(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_ERROR;
   }
 
-  Tcl_SetObjResult(interp, Tcl_NewLongObj((long)address));
+  Tcl_SetObjResult(interp, Ffidl_NewPointerObj(address));
   return TCL_OK;
 }
 
@@ -3384,7 +3432,7 @@ static int tcl_ffidl_stubsymbol(ClientData clientData, Tcl_Interp *interp, int o
     return TCL_ERROR;
   }
 
-  Tcl_SetObjResult(interp, Tcl_NewLongObj((long)address));
+  Tcl_SetObjResult(interp, Ffidl_NewPointerObj(address));
   return TCL_OK;
 }
 

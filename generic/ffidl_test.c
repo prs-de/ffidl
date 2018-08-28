@@ -8,6 +8,7 @@
  */
 
 #include <tcl.h>
+#include <stdint.h>		/* uintptr_t */
 
 #ifdef __WIN32__
 #undef TCL_STORAGE_CLASS
@@ -54,7 +55,7 @@ EXTERN signed char ffidl_ulonglong_to_schar(unsigned long long a) { return a; }
 EXTERN signed char ffidl_float_to_schar(float a) { return a; }
 EXTERN signed char ffidl_double_to_schar(double a) { return a; }
 EXTERN signed char ffidl_longdouble_to_schar(long double a) { return a; }
-EXTERN signed char ffidl_pointer_to_schar(void *a) { return (signed char)(long)a; }
+EXTERN signed char ffidl_pointer_to_schar(void *a) { return (signed char)(uintptr_t)a; }
 
 EXTERN unsigned char ffidl_schar_to_uchar(signed char a) { return a; }
 EXTERN unsigned char ffidl_uchar_to_uchar(unsigned char a) { return a; }
@@ -69,7 +70,7 @@ EXTERN unsigned char ffidl_ulonglong_to_uchar(unsigned long long a) { return a; 
 EXTERN unsigned char ffidl_float_to_uchar(float a) { return a; }
 EXTERN unsigned char ffidl_double_to_uchar(double a) { return a; }
 EXTERN unsigned char ffidl_longdouble_to_uchar(long double a) { return a; }
-EXTERN unsigned char ffidl_pointer_to_uchar(void *a) { return (unsigned char)(long)a; }
+EXTERN unsigned char ffidl_pointer_to_uchar(void *a) { return (unsigned char)(uintptr_t)a; }
 
 EXTERN signed short ffidl_schar_to_sshort(signed char a) { return a; }
 EXTERN signed short ffidl_uchar_to_sshort(unsigned char a) { return a; }
@@ -84,7 +85,7 @@ EXTERN signed short ffidl_ulonglong_to_sshort(unsigned long long a) { return a; 
 EXTERN signed short ffidl_float_to_sshort(float a) { return a; }
 EXTERN signed short ffidl_double_to_sshort(double a) { return a; }
 EXTERN signed short ffidl_longdouble_to_sshort(long double a) { return a; }
-EXTERN signed short ffidl_pointer_to_sshort(void *a) { return (signed short)(long)a; }
+EXTERN signed short ffidl_pointer_to_sshort(void *a) { return (signed short)(uintptr_t)a; }
 
 EXTERN unsigned short ffidl_schar_to_ushort(signed char a) { return a; }
 EXTERN unsigned short ffidl_uchar_to_ushort(unsigned char a) { return a; }
@@ -99,7 +100,7 @@ EXTERN unsigned short ffidl_ulonglong_to_ushort(unsigned long long a) { return a
 EXTERN unsigned short ffidl_float_to_ushort(float a) { return a; }
 EXTERN unsigned short ffidl_double_to_ushort(double a) { return a; }
 EXTERN unsigned short ffidl_longdouble_to_ushort(long double a) { return a; }
-EXTERN unsigned short ffidl_pointer_to_ushort(void *a) { return (unsigned short)(long)a; }
+EXTERN unsigned short ffidl_pointer_to_ushort(void *a) { return (unsigned short)(uintptr_t)a; }
 
 EXTERN signed int ffidl_schar_to_sint(signed char a) { return a; }
 EXTERN signed int ffidl_uchar_to_sint(unsigned char a) { return a; }
@@ -114,7 +115,7 @@ EXTERN signed int ffidl_ulonglong_to_sint(unsigned long long a) { return a; }
 EXTERN signed int ffidl_float_to_sint(float a) { return a; }
 EXTERN signed int ffidl_double_to_sint(double a) { return a; }
 EXTERN signed int ffidl_longdouble_to_sint(long double a) { return a; }
-EXTERN signed int ffidl_pointer_to_sint(void *a) { return (signed int)(long)a; }
+EXTERN signed int ffidl_pointer_to_sint(void *a) { return (signed int)(uintptr_t)a; }
 
 EXTERN unsigned int ffidl_schar_to_uint(signed char a) { return a; }
 EXTERN unsigned int ffidl_uchar_to_uint(unsigned char a) { return a; }
@@ -129,7 +130,7 @@ EXTERN unsigned int ffidl_ulonglong_to_uint(unsigned long long a) { return a; }
 EXTERN unsigned int ffidl_float_to_uint(float a) { return a; }
 EXTERN unsigned int ffidl_double_to_uint(double a) { return a; }
 EXTERN unsigned int ffidl_longdouble_to_uint(long double a) { return a; }
-EXTERN unsigned int ffidl_pointer_to_uint(void *a) { return (unsigned int)(long)a; }
+EXTERN unsigned int ffidl_pointer_to_uint(void *a) { return (unsigned int)(uintptr_t)a; }
 
 EXTERN signed long ffidl_schar_to_slong(signed char a) { return a; }
 EXTERN signed long ffidl_uchar_to_slong(unsigned char a) { return a; }
@@ -144,7 +145,7 @@ EXTERN signed long ffidl_ulonglong_to_slong(unsigned long long a) { return a; }
 EXTERN signed long ffidl_float_to_slong(float a) { return a; }
 EXTERN signed long ffidl_double_to_slong(double a) { return a; }
 EXTERN signed long ffidl_longdouble_to_slong(long double a) { return a; }
-EXTERN signed long ffidl_pointer_to_slong(void *a) { return (signed long)(long)a; }
+EXTERN signed long ffidl_pointer_to_slong(void *a) { return (signed long)(uintptr_t)a; }
 
 EXTERN unsigned long ffidl_schar_to_ulong(signed char a) { return a; }
 EXTERN unsigned long ffidl_uchar_to_ulong(unsigned char a) { return a; }
@@ -159,7 +160,7 @@ EXTERN unsigned long ffidl_ulonglong_to_ulong(unsigned long long a) { return a; 
 EXTERN unsigned long ffidl_float_to_ulong(float a) { return a; }
 EXTERN unsigned long ffidl_double_to_ulong(double a) { return a; }
 EXTERN unsigned long ffidl_longdouble_to_ulong(long double a) { return a; }
-EXTERN unsigned long ffidl_pointer_to_ulong(void *a) { return (unsigned long)(long)a; }
+EXTERN unsigned long ffidl_pointer_to_ulong(void *a) { return (unsigned long)(uintptr_t)a; }
 
 EXTERN signed long long ffidl_schar_to_slonglong(signed char a) { return a; }
 EXTERN signed long long ffidl_uchar_to_slonglong(unsigned char a) { return a; }
@@ -174,7 +175,7 @@ EXTERN signed long long ffidl_ulonglong_to_slonglong(unsigned long long a) { ret
 EXTERN signed long long ffidl_float_to_slonglong(float a) { return a; }
 EXTERN signed long long ffidl_double_to_slonglong(double a) { return a; }
 EXTERN signed long long ffidl_longdouble_to_slonglong(long double a) { return a; }
-EXTERN signed long long ffidl_pointer_to_slonglong(void *a) { return (signed long long)(long)a; }
+EXTERN signed long long ffidl_pointer_to_slonglong(void *a) { return (signed long long)(uintptr_t)a; }
 
 EXTERN unsigned long long ffidl_schar_to_ulonglong(signed char a) { return a; }
 EXTERN unsigned long long ffidl_uchar_to_ulonglong(unsigned char a) { return a; }
@@ -189,7 +190,7 @@ EXTERN unsigned long long ffidl_ulonglong_to_ulonglong(unsigned long long a) { r
 EXTERN unsigned long long ffidl_float_to_ulonglong(float a) { return a; }
 EXTERN unsigned long long ffidl_double_to_ulonglong(double a) { return a; }
 EXTERN unsigned long long ffidl_longdouble_to_ulonglong(long double a) { return a; }
-EXTERN unsigned long long ffidl_pointer_to_ulonglong(void *a) { return (signed long long)(long)a; }
+EXTERN unsigned long long ffidl_pointer_to_ulonglong(void *a) { return (signed long long)(uintptr_t)a; }
 
 EXTERN float ffidl_schar_to_float(signed char a) { return a; }
 EXTERN float ffidl_uchar_to_float(unsigned char a) { return a; }
@@ -204,7 +205,7 @@ EXTERN float ffidl_ulonglong_to_float(unsigned long long a) { return a; }
 EXTERN float ffidl_float_to_float(float a) { return a; }
 EXTERN float ffidl_double_to_float(double a) { return a; }
 EXTERN float ffidl_longdouble_to_float(long double a) { return a; }
-EXTERN float ffidl_pointer_to_float(void *a) { return (float)(long)a; }
+EXTERN float ffidl_pointer_to_float(void *a) { return (float)(uintptr_t)a; }
 
 EXTERN double ffidl_schar_to_double(signed char a) { return a; }
 EXTERN double ffidl_uchar_to_double(unsigned char a) { return a; }
@@ -219,7 +220,7 @@ EXTERN double ffidl_ulonglong_to_double(unsigned long long a) { return a; }
 EXTERN double ffidl_float_to_double(float a) { return a; }
 EXTERN double ffidl_double_to_double(double a) { return a; }
 EXTERN double ffidl_longdouble_to_double(long double a) { return a; }
-EXTERN double ffidl_pointer_to_double(void *a) { return (double)(long)a; }
+EXTERN double ffidl_pointer_to_double(void *a) { return (double)(uintptr_t)a; }
 
 EXTERN long double ffidl_schar_to_longdouble(signed char a) { return a; }
 EXTERN long double ffidl_uchar_to_longdouble(unsigned char a) { return a; }
@@ -234,21 +235,21 @@ EXTERN long double ffidl_ulonglong_to_longdouble(unsigned long long a) { return 
 EXTERN long double ffidl_float_to_longdouble(float a) { return a; }
 EXTERN long double ffidl_double_to_longdouble(double a) { return a; }
 EXTERN long double ffidl_longdouble_to_longdouble(long double a) { return a; }
-EXTERN long double ffidl_pointer_to_longdouble(void *a) { return (long double)(long)a; }
+EXTERN long double ffidl_pointer_to_longdouble(void *a) { return (long double)(uintptr_t)a; }
 
-EXTERN void *ffidl_schar_to_pointer(signed char a) { return (void *)(long)a; }
-EXTERN void *ffidl_uchar_to_pointer(unsigned char a) { return (void *)(long)a; }
-EXTERN void *ffidl_sshort_to_pointer(signed short a) { return (void *)(long)a; }
-EXTERN void *ffidl_ushort_to_pointer(unsigned short a) { return (void *)(long)a; }
-EXTERN void *ffidl_sint_to_pointer(signed int a) { return (void *)(long)a; }
-EXTERN void *ffidl_uint_to_pointer(unsigned int a) { return (void *)(long)a; }
-EXTERN void *ffidl_slong_to_pointer(signed long a) { return (void *)(long)a; }
-EXTERN void *ffidl_ulong_to_pointer(unsigned long a) { return (void *)(long)a; }
-EXTERN void *ffidl_slonglong_to_pointer(signed long long a) { return (void *)(long)a; }
-EXTERN void *ffidl_ulonglong_to_pointer(unsigned long long a) { return (void *)(long)a; }
-EXTERN void *ffidl_float_to_pointer(float a) { return (void *)(long)a; }
-EXTERN void *ffidl_double_to_pointer(double a) { return (void *)(long)a; }
-EXTERN void *ffidl_longdouble_to_pointer(long double a) { return (void *)(long)a; }
+EXTERN void *ffidl_schar_to_pointer(signed char a) { return (void *)(uintptr_t)a; }
+EXTERN void *ffidl_uchar_to_pointer(unsigned char a) { return (void *)(uintptr_t)a; }
+EXTERN void *ffidl_sshort_to_pointer(signed short a) { return (void *)(uintptr_t)a; }
+EXTERN void *ffidl_ushort_to_pointer(unsigned short a) { return (void *)(uintptr_t)a; }
+EXTERN void *ffidl_sint_to_pointer(signed int a) { return (void *)(uintptr_t)a; }
+EXTERN void *ffidl_uint_to_pointer(unsigned int a) { return (void *)(uintptr_t)a; }
+EXTERN void *ffidl_slong_to_pointer(signed long a) { return (void *)(uintptr_t)a; }
+EXTERN void *ffidl_ulong_to_pointer(unsigned long a) { return (void *)(uintptr_t)a; }
+EXTERN void *ffidl_slonglong_to_pointer(signed long long a) { return (void *)(uintptr_t)a; }
+EXTERN void *ffidl_ulonglong_to_pointer(unsigned long long a) { return (void *)(uintptr_t)a; }
+EXTERN void *ffidl_float_to_pointer(float a) { return (void *)(uintptr_t)a; }
+EXTERN void *ffidl_double_to_pointer(double a) { return (void *)(uintptr_t)a; }
+EXTERN void *ffidl_longdouble_to_pointer(long double a) { return (void *)(uintptr_t)a; }
 EXTERN void *ffidl_pointer_to_pointer(void *a) { return a; }
 
 EXTERN ffidl_test_struct ffidl_fill_struct() { return astruct; }
