@@ -646,6 +646,7 @@ AR
 STUBS_BUILD
 SHARED_BUILD
 TCL_THREADS
+TAR
 host_os
 host_vendor
 host_cpu
@@ -7291,6 +7292,44 @@ eval
 cat >>confdefs.h <<_ACEOF
 #define CANONICAL_HOST "${host}"
 _ACEOF
+
+
+# Extract the first word of "tar", so it can be a program name with args.
+set dummy tar; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_prog_TAR+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test -n "$TAR"; then
+  ac_cv_prog_TAR="$TAR" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_TAR="tar"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+fi
+fi
+TAR=$ac_cv_prog_TAR
+if test -n "$TAR"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $TAR" >&5
+$as_echo "$TAR" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
 
 
 #--------------------------------------------------------------------

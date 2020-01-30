@@ -245,6 +245,8 @@ AC_CANONICAL_HOST
 eval AC_DEFINE_UNQUOTED(CANONICAL_HOST, "${host}", 
     [Canonical host name])
 
+AC_CHECK_PROG([TAR],[tar],[tar])
+
 #--------------------------------------------------------------------
 # Check whether --enable-threads or --disable-threads was given.
 # This auto-enables if Tcl was compiled threaded.

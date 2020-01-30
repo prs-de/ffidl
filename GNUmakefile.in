@@ -156,6 +156,7 @@ LIBS		= @LIBS@
 AR		= @AR@
 CFLAGS		= @CFLAGS@
 COMPILE		= $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+TAR             = @TAR@
 
 #========================================================================
 # Start of user-definable TARGETS section
@@ -307,8 +308,7 @@ pkgIndex.tcl-hand:
 # You may need to tweak this target to make it work correctly.
 #========================================================================
 
-#COMPRESS	= tar cvf $(PKG_DIR).tar $(PKG_DIR); compress $(PKG_DIR).tar
-COMPRESS	= gtar zcvf $(PKG_DIR).tar.gz $(PKG_DIR)
+COMPRESS	= $(TAR) zcvf $(PKG_DIR).tar.gz $(PKG_DIR)
 DIST_ROOT	= /tmp/dist
 DIST_DIR	= $(DIST_ROOT)/$(PKG_DIR)
 
