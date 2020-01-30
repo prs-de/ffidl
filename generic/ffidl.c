@@ -97,6 +97,8 @@ static void *tkStubsPtr, *tkPlatStubsPtr, *tkIntStubsPtr, *tkIntPlatStubsPtr, *t
 
 #include <string.h>
 #include <stdlib.h>
+/* Needed for MSVC (error C2065: 'INT64_MIN' : undeclared identifier) */
+#include <stdint.h>
 
 /*
  * We can use either
@@ -1847,21 +1849,26 @@ static int callout_prep_value(Tcl_Interp *interp, unsigned context,
  */
 static inline int value_convert_to_c(Tcl_Interp *interp, ffidl_type *type, Tcl_Obj *obj, ffidl_tclobj_value *out)
 {
-  double dtmp;
-  long ltmp;
+  double dtmp = 0;
+  long ltmp = 0;
 #if HAVE_INT64
-  Ffidl_Int64 wtmp;
+  Ffidl_Int64 wtmp = 0;
 #endif
   if (type->class & FFIDL_GETINT) {
     if (obj->typePtr == ffidl_double_ObjType) {
       if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
 	goto fail;
       }
-      ltmp = (long)dtmp;
-      if (dtmp != ltmp)
+      /* Avoid undefined behaviour when casting a non-representable value. */
+      if (dtmp >= LONG_MIN && dtmp <= LONG_MAX) {
+	ltmp = (long)dtmp;
+      }
+      if (dtmp != ltmp) {
+	/* Does not round-trip; use Tcl's conversion. */
 	if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR) {
 	  goto fail;
 	}
+      }
     } else if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR) {
       goto fail;
     }
@@ -1872,8 +1879,12 @@ static inline int value_convert_to_c(Tcl_Interp *interp, ffidl_type *type, Tcl_O
       if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
 	goto fail;
       }
-      wtmp = (Ffidl_Int64)dtmp;
+      /* Avoid undefined behaviour when casting a non-representable value. */
+      if (dtmp >= INT64_MIN && dtmp <= INT64_MAX) {
+	wtmp = (Ffidl_Int64)dtmp;
+      }
       if (dtmp != wtmp) {
+	/* Does not round-trip; use Tcl's conversion. */
 	if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
 	  goto fail;
 	}
@@ -1888,8 +1899,12 @@ static inline int value_convert_to_c(Tcl_Interp *interp, ffidl_type *type, Tcl_O
       if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR) {
 	goto fail;
       }
-      dtmp = (double)ltmp;
+      /* Avoid undefined behaviour when casting a non-representable value. */
+      if (ltmp >= DBL_MIN && ltmp <= DBL_MAX) {
+	dtmp = (double)ltmp;
+      }
       if (dtmp != ltmp) {
+	/* Does not round-trip; use Tcl's conversion. */
 	if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
 	  goto fail;
 	}
@@ -1899,8 +1914,12 @@ static inline int value_convert_to_c(Tcl_Interp *interp, ffidl_type *type, Tcl_O
       if (Tcl_GetWideIntFromObj(interp, obj, &wtmp) == TCL_ERROR) {
 	goto fail;
       }
-      dtmp = (double)wtmp;
+      /* Avoid undefined behaviour when casting a non-representable value. */
+      if (wtmp >= DBL_MIN && wtmp <= DBL_MAX) {
+	dtmp = (double)wtmp;
+      }
       if (dtmp != wtmp) {
+	/* Does not round-trip; use Tcl's conversion. */
 	if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
 	  goto fail;
 	}
