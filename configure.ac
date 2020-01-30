@@ -239,6 +239,8 @@ AC_CHECK_ALIGNOF([long double])
 AC_CHECK_SIZEOF([void *])
 AC_CHECK_ALIGNOF([void *])
 
+AC_C_INLINE
+
 AC_CANONICAL_HOST
 eval AC_DEFINE_UNQUOTED(CANONICAL_HOST, "${host}", 
     [Canonical host name])

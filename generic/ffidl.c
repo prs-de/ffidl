@@ -745,6 +745,7 @@ static int Ffidl_GetPointerFromObj(Tcl_Interp *interp, Tcl_Obj *obj, void **ptr)
  */
 typedef enum ffidl_typecode ffidl_typecode;
 typedef union ffidl_value ffidl_value;
+typedef union ffidl_tclobj_value ffidl_tclobj_value;
 typedef struct ffidl_type ffidl_type;
 typedef struct ffidl_client ffidl_client;
 typedef struct ffidl_cif ffidl_cif;
@@ -752,6 +753,18 @@ typedef struct ffidl_callout ffidl_callout;
 typedef struct ffidl_callback ffidl_callback;
 typedef struct ffidl_closure ffidl_closure;
 typedef struct ffidl_lib ffidl_lib;
+
+/*
+ * Can hold the (C) values extracted from Tcl_Objs, as specified by the type's
+ * FFIDL_GETINT, FFIDL_GETDOUBLE, FFIDL_GETWIDEINT.
+ */
+union ffidl_tclobj_value {
+  double v_double;
+  long v_long;
+#if HAVE_INT64
+  Ffidl_Int64 v_wideint;
+#endif
+};
 
 /*
  * The ffidl_value structure contains a union used
@@ -1827,6 +1840,84 @@ static int callout_prep_value(Tcl_Interp *interp, unsigned context,
   return TCL_OK;
 }
 
+/*
+ * Get a C value of specified type (FFIDL_GETINT, FFIDL_GETDOUBLE,
+ * FFIDL_GETWIDEINT) from a Tcl_Obj .  Note that this value must still be
+ * interpreted according to the type, whether it's in argument or return
+ * position (libffi quirk), etc.
+ */
+static inline int value_convert_to_c(Tcl_Interp *interp, ffidl_type *type, Tcl_Obj *obj, ffidl_tclobj_value *out)
+{
+  double dtmp;
+  long ltmp;
+#if HAVE_INT64
+  Ffidl_Int64 wtmp;
+#endif
+  if (type->class & FFIDL_GETINT) {
+    if (obj->typePtr == ffidl_double_ObjType) {
+      if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
+	goto fail;
+      }
+      ltmp = (long)dtmp;
+      if (dtmp != ltmp)
+	if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR) {
+	  goto fail;
+	}
+    } else if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR) {
+      goto fail;
+    }
+    out->v_long = ltmp;
+#if HAVE_INT64
+  } else if (type->class & FFIDL_GETWIDEINT) {
+    if (obj->typePtr == ffidl_double_ObjType) {
+      if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
+	goto fail;
+      }
+      wtmp = (Ffidl_Int64)dtmp;
+      if (dtmp != wtmp) {
+	if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
+	  goto fail;
+	}
+      }
+    } else if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
+      goto fail;
+    }
+    out->v_wideint = wtmp;
+#endif
+  } else if (type->class & FFIDL_GETDOUBLE) {
+    if (obj->typePtr == ffidl_int_ObjType) {
+      if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR) {
+	goto fail;
+      }
+      dtmp = (double)ltmp;
+      if (dtmp != ltmp) {
+	if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
+	  goto fail;
+	}
+      }
+#if HAVE_WIDE_INT
+    } else if (obj->typePtr == ffidl_wideInt_ObjType) {
+      if (Tcl_GetWideIntFromObj(interp, obj, &wtmp) == TCL_ERROR) {
+	goto fail;
+      }
+      dtmp = (double)wtmp;
+      if (dtmp != wtmp) {
+	if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
+	  goto fail;
+	}
+      }
+#endif
+    } else if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
+      goto fail;
+    }
+    out->v_double = dtmp;
+  }
+  return TCL_OK;
+fail:
+  return TCL_ERROR;
+}
+
+
 static int callout_prep(ffidl_callout *callout)
 {
 #if USE_LIBFFI_RAW_API
@@ -2077,11 +2168,7 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
   Tcl_Obj **objv, *obj;
   char buff[128];
   int i, status;
-  long ltmp;
-  double dtmp;
-#if HAVE_INT64
-  Ffidl_Int64 wtmp;
-#endif
+  ffidl_tclobj_value obj_value = {0};
   /* test for valid scope */
   if (interp == NULL) {
     Tcl_Panic("callback called out of scope!\n");
@@ -2178,93 +2265,28 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
   }
   /* fetch return value */
   obj = Tcl_GetObjResult(interp);
-  if (cif->rtype->class & FFIDL_GETINT) {
-    if (obj->typePtr == ffidl_double_ObjType) {
-      if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
-	Tcl_AppendResult(interp, ", converting callback return value", NULL);
-	goto escape;
-      }
-      ltmp = (long)dtmp;
-      if (dtmp != ltmp) {
-	if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR) {
-	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
-	  goto escape;
-	}
-      }
-    } else if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR) {
-      Tcl_AppendResult(interp, ", converting callback return value", NULL);
-      goto escape;
-    }
-#if HAVE_INT64
-  } else if (cif->rtype->class & FFIDL_GETWIDEINT) {
-    if (obj->typePtr == ffidl_double_ObjType) {
-      if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
-	Tcl_AppendResult(interp, ", converting callback return value", NULL);
-	goto escape;
-      }
-      wtmp = (Ffidl_Int64)dtmp;
-      if (dtmp != wtmp) {
-	if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
-	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
-	  goto escape;
-	}
-      }
-    } else if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
-      Tcl_AppendResult(interp, ", converting callback return value", NULL);
-      goto escape;
-    }
-#endif
-  } else if (cif->rtype->class & FFIDL_GETDOUBLE) {
-    if (obj->typePtr == ffidl_int_ObjType) {
-      if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR) {
-	Tcl_AppendResult(interp, ", converting callback return value", NULL);
-	goto escape;
-      }
-      dtmp = (double)ltmp;
-      if (dtmp != ltmp) {
-	if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
-	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
-	  goto escape;
-	}
-      }
-#if HAVE_WIDE_INT
-    } else if (obj->typePtr == ffidl_wideInt_ObjType) {
-      if (Tcl_GetWideIntFromObj(interp, obj, &wtmp) == TCL_ERROR) {
-	Tcl_AppendResult(interp, ", converting callback return value", NULL);
-	goto escape;
-      }
-      dtmp = (double)wtmp;
-      if (dtmp != wtmp) {
-	if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
-	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
-	  goto escape;
-	}
-      }
-#endif
-    } else if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
-      Tcl_AppendResult(interp, ", converting callback return value", NULL);
-      goto escape;
-    }
+  if (TCL_OK != value_convert_to_c(interp, cif->rtype, obj, &obj_value)) {
+    Tcl_AppendResult(interp, ", converting callback return value", NULL);
+    goto escape;
   }
-  
   /* convert return value */
   switch (cif->rtype->typecode) {
   case FFIDL_VOID:	break;
-  case FFIDL_INT:	FFIDL_RVALUE_POKE_WIDENED(INT, ret, ltmp); break;
-  case FFIDL_FLOAT:	FFIDL_RVALUE_POKE_WIDENED(FLOAT, ret, dtmp); break;
-  case FFIDL_DOUBLE:	FFIDL_RVALUE_POKE_WIDENED(DOUBLE, ret, dtmp); break;
+  case FFIDL_INT:	FFIDL_RVALUE_POKE_WIDENED(INT, ret, obj_value.v_long); break;
+  case FFIDL_FLOAT:	FFIDL_RVALUE_POKE_WIDENED(FLOAT, ret, obj_value.v_double); break;
+  case FFIDL_DOUBLE:	FFIDL_RVALUE_POKE_WIDENED(DOUBLE, ret, obj_value.v_double); break;
 #if HAVE_LONG_DOUBLE
-  case FFIDL_UINT8:	FFIDL_RVALUE_POKE_WIDENED(LONGDOUBLE, ret, ltmp); break;
+  case FFIDL_LONGDOUBLE:FFIDL_RVALUE_POKE_WIDENED(LONGDOUBLE, ret, obj_value.v_long); break;
 #endif
-  case FFIDL_UINT8:	FFIDL_RVALUE_POKE_WIDENED(UINT8, ret, ltmp); break;
-  case FFIDL_SINT8:	FFIDL_RVALUE_POKE_WIDENED(SINT8, ret, ltmp); break;
-  case FFIDL_UINT16:	FFIDL_RVALUE_POKE_WIDENED(UINT16, ret, ltmp); break;
-  case FFIDL_SINT16:	FFIDL_RVALUE_POKE_WIDENED(SINT16, ret, ltmp); break;
-  case FFIDL_UINT32:	FFIDL_RVALUE_POKE_WIDENED(UINT32, ret, ltmp); break;
-  case FFIDL_SINT32:	FFIDL_RVALUE_POKE_WIDENED(SINT32, ret, ltmp); break;
+  case FFIDL_UINT8:	FFIDL_RVALUE_POKE_WIDENED(UINT8, ret, obj_value.v_long); break;
+  case FFIDL_SINT8:	FFIDL_RVALUE_POKE_WIDENED(SINT8, ret, obj_value.v_long); break;
+  case FFIDL_UINT16:	FFIDL_RVALUE_POKE_WIDENED(UINT16, ret, obj_value.v_long); break;
+  case FFIDL_SINT16:	FFIDL_RVALUE_POKE_WIDENED(SINT16, ret, obj_value.v_long); break;
+  case FFIDL_UINT32:	FFIDL_RVALUE_POKE_WIDENED(UINT32, ret, obj_value.v_long); break;
+  case FFIDL_SINT32:	FFIDL_RVALUE_POKE_WIDENED(SINT32, ret, obj_value.v_long); break;
 #if HAVE_INT64
-  case FFIDL_UINT64:	FFIDL_RVALUE_POKE_WIDENED(UINT64, ret, wtmp); break;
-  case FFIDL_SINT64:	FFIDL_RVALUE_POKE_WIDENED(SINT64, ret, wtmp); break;
+  case FFIDL_UINT64:	FFIDL_RVALUE_POKE_WIDENED(UINT64, ret, obj_value.v_wideint); break;
+  case FFIDL_SINT64:	FFIDL_RVALUE_POKE_WIDENED(SINT64, ret, obj_value.v_wideint); break;
 #endif
   case FFIDL_STRUCT:
     {
@@ -2280,9 +2302,9 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
       break;
     }
 #if FFIDL_POINTER_IS_LONG
-  case FFIDL_PTR:	FFIDL_RVALUE_POKE_WIDENED(PTR, ret, ltmp); break;
+  case FFIDL_PTR:	FFIDL_RVALUE_POKE_WIDENED(PTR, ret, obj_value.v_long); break;
 #else
-  case FFIDL_PTR:	FFIDL_RVALUE_POKE_WIDENED(PTR, ret, wtmp); break;
+  case FFIDL_PTR:	FFIDL_RVALUE_POKE_WIDENED(PTR, ret, obj_value.v_wideint); break;
 #endif
   case FFIDL_PTR_OBJ:	FFIDL_RVALUE_POKE_WIDENED(PTR, ret, obj); break;
   default:
@@ -2306,11 +2328,7 @@ static void callback_callback(void *user_data, va_alist alist)
   Tcl_Obj **objv, *obj;
   char buff[128];
   int i, status;
-  long ltmp;
-  double dtmp;
-#if HAVE_INT64
-  Ffidl_Int64 wtmp;
-#endif
+  ffidl_tclobj_value obj_value = {0};
   /* test for valid scope */
   if (interp == NULL) {
     Tcl_Panic("callback called out of scope!\n");
@@ -2419,89 +2437,26 @@ static void callback_callback(void *user_data, va_alist alist)
   }
   /* fetch return value */
   obj = Tcl_GetObjResult(interp);
-  if (cif->rtype->class & FFIDL_GETINT) {
-    if (obj->typePtr == ffidl_double_ObjType) {
-      if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
-	Tcl_AppendResult(interp, ", converting callback return value", NULL);
-	goto escape;
-      }
-      ltmp = (long)dtmp;
-      if (dtmp != ltmp)
-	if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR) {
-	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
-	  goto escape;
-	}
-    } else if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR) {
-      Tcl_AppendResult(interp, ", converting callback return value", NULL);
-      goto escape;
-    }
-#if HAVE_INT64
-  } else if (cif->rtype->class & FFIDL_GETWIDEINT) {
-    if (obj->typePtr == ffidl_double_ObjType) {
-      if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
-	Tcl_AppendResult(interp, ", converting callback return value", NULL);
-	goto escape;
-      }
-      wtmp = (Ffidl_Int64)dtmp;
-      if (dtmp != wtmp) {
-	if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
-	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
-	  goto escape;
-	}
-      }
-    } else if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
-      Tcl_AppendResult(interp, ", converting callback return value", NULL);
-      goto escape;
-    }
-#endif
-  } else if (cif->rtype->class & FFIDL_GETDOUBLE) {
-    if (obj->typePtr == ffidl_int_ObjType) {
-      if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR) {
-	Tcl_AppendResult(interp, ", converting callback return value", NULL);
-	goto escape;
-      }
-      dtmp = (double)ltmp;
-      if (dtmp != ltmp) {
-	if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
-	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
-	  goto escape;
-	}
-      }
-#if HAVE_WIDE_INT
-    } else if (obj->typePtr == ffidl_wideInt_ObjType) {
-      if (Tcl_GetWideIntFromObj(interp, obj, &wtmp) == TCL_ERROR) {
-	Tcl_AppendResult(interp, ", converting callback return value", NULL);
-	goto escape;
-      }
-      dtmp = (double)wtmp;
-      if (dtmp != wtmp) {
-	if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
-	  Tcl_AppendResult(interp, ", converting callback return value", NULL);
-	  goto escape;
-	}
-      }
-#endif
-    } else if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR) {
-      Tcl_AppendResult(interp, ", converting callback return value", NULL);
-      goto escape;
-    }
+  if (TCL_OK != value_convert_to_c(interp, cif->rtype, obj, &obj_value)) {
+    Tcl_AppendResult(interp, ", converting callback return value", NULL);
+    goto escape;
   }
   
   /* convert return value */
   switch (cif->rtype->typecode) {
   case FFIDL_VOID:	va_return_void(alist); break;
-  case FFIDL_INT:	va_return_int(alist, ltmp); break;
-  case FFIDL_FLOAT:	va_return_float(alist, dtmp); break;
-  case FFIDL_DOUBLE:	va_return_double(alist, dtmp); break;
-  case FFIDL_UINT8:	va_return_uint8(alist, ltmp); break;
-  case FFIDL_SINT8:	va_return_sint8(alist, ltmp); break;
-  case FFIDL_UINT16:	va_return_uint16(alist, ltmp); break;
-  case FFIDL_SINT16:	va_return_sint16(alist, ltmp); break;
-  case FFIDL_UINT32:	va_return_uint32(alist, ltmp); break;
-  case FFIDL_SINT32:	va_return_sint32(alist, ltmp); break;
+  case FFIDL_INT:	va_return_int(alist, obj_value.v_long); break;
+  case FFIDL_FLOAT:	va_return_float(alist, obj_value.v_double); break;
+  case FFIDL_DOUBLE:	va_return_double(alist, obj_value.v_double); break;
+  case FFIDL_UINT8:	va_return_uint8(alist, obj_value.v_long); break;
+  case FFIDL_SINT8:	va_return_sint8(alist, obj_value.v_long); break;
+  case FFIDL_UINT16:	va_return_uint16(alist, obj_value.v_long); break;
+  case FFIDL_SINT16:	va_return_sint16(alist, obj_value.v_long); break;
+  case FFIDL_UINT32:	va_return_uint32(alist, obj_value.v_long); break;
+  case FFIDL_SINT32:	va_return_sint32(alist, obj_value.v_long); break;
 #if HAVE_INT64
-  case FFIDL_UINT64:	va_return_uint64(alist, wtmp); break;
-  case FFIDL_SINT64:	va_return_sint64(alist, wtmp); break;
+  case FFIDL_UINT64:	va_return_uint64(alist, obj_value.v_wideint); break;
+  case FFIDL_SINT64:	va_return_sint64(alist, obj_value.v_wideint); break;
 #endif
   case FFIDL_STRUCT:	
     {
@@ -2516,7 +2471,7 @@ static void callback_callback(void *user_data, va_alist alist)
       _va_return_struct(alist, cif->rtype->size, cif->rtype->alignment, bytes);
       break;
     }
-  case FFIDL_PTR:	va_return_ptr(alist, void *, ltmp); break;
+  case FFIDL_PTR:	va_return_ptr(alist, void *, obj_value.v_long); break;
   case FFIDL_PTR_OBJ:	va_return_ptr(alist, Tcl_Obj *, obj); break;
   default:
     Tcl_ResetResult(interp);
@@ -2952,13 +2907,9 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
   ffidl_callout *callout = (ffidl_callout *)clientData;
   ffidl_cif *cif = callout->cif;
   int i, itmp;
-  long ltmp;
-  double dtmp;
-#if HAVE_INT64
-  Ffidl_Int64 wtmp;
-#endif
   Tcl_Obj *obj = NULL;
   char buff[128];
+  ffidl_tclobj_value obj_value = {0};
 
   /* usage check */
   if (objc-args_ix != cif->argc) {
@@ -2970,90 +2921,49 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
     /* fetch object */
     obj = objv[args_ix+i];
     /* fetch value from object and store value into arg value array */
-    if (cif->atypes[i]->class & FFIDL_GETINT) {
-      if (obj->typePtr == ffidl_double_ObjType) {
-	if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR)
-	  goto cleanup;
-	ltmp = (long)dtmp;
-	if (dtmp != ltmp)
-	  if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR)
-	    goto cleanup;
-      } else if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR)
-	goto cleanup;
-#if HAVE_INT64
-    } else if (cif->atypes[i]->class & FFIDL_GETWIDEINT) {
-      if (obj->typePtr == ffidl_double_ObjType) {
-	if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR)
-	  goto cleanup;
-	wtmp = (Ffidl_Int64)dtmp;
-	if (dtmp != wtmp) {
-	  if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
-	    goto cleanup;
-	  }
-	}
-      } else if (Ffidl_GetInt64FromObj(interp, obj, &wtmp) == TCL_ERROR) {
-	goto cleanup;
-      }
-#endif
-    } else if (cif->atypes[i]->class & FFIDL_GETDOUBLE) {
-      if (obj->typePtr == ffidl_int_ObjType) {
-	if (Tcl_GetLongFromObj(interp, obj, &ltmp) == TCL_ERROR)
-	  goto cleanup;
-	dtmp = (double)ltmp;
-	if (dtmp != ltmp)
-	  if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR)
-	    goto cleanup;
-#if HAVE_WIDE_INT
-      } else if (obj->typePtr == ffidl_wideInt_ObjType) {
-	if (Tcl_GetWideIntFromObj(interp, obj, &wtmp) == TCL_ERROR)
-	  goto cleanup;
-	dtmp = (double)wtmp;
-	if (dtmp != wtmp)
-	  if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR)
-	    goto cleanup;
-#endif
-      } else if (Tcl_GetDoubleFromObj(interp, obj, &dtmp) == TCL_ERROR)
-	goto cleanup;
+    if (TCL_OK != value_convert_to_c(interp, cif->atypes[i], obj, &obj_value)) {
+      Tcl_AppendResult(interp, ", converting callout argument value", NULL);
+      goto cleanup;
     }
     switch (cif->atypes[i]->typecode) {
     case FFIDL_INT:
-      *(int *)callout->args[i] = (int)ltmp;
+      *(int *)callout->args[i] = (int)obj_value.v_long;
       continue;
     case FFIDL_FLOAT:
-      *(float *)callout->args[i] = (float)dtmp;
+      *(float *)callout->args[i] = (float)obj_value.v_double;
       continue;
     case FFIDL_DOUBLE:
-      *(double *)callout->args[i] = (double)dtmp;
+      *(double *)callout->args[i] = (double)obj_value.v_double;
       continue;
 #if HAVE_LONG_DOUBLE
     case FFIDL_LONGDOUBLE:
-      *(long double *)callout->args[i] = (long double)dtmp;
+      *(long double *)callout->args[i] = (long double)obj_value.v_double;
       continue;
 #endif
     case FFIDL_UINT8:
-      *(UINT8_T *)callout->args[i] = (UINT8_T)ltmp;
+      *(UINT8_T *)callout->args[i] = (UINT8_T)obj_value.v_long;
       continue;
     case FFIDL_SINT8:
-      *(SINT8_T *)callout->args[i] = (SINT8_T)ltmp;
+      *(SINT8_T *)callout->args[i] = (SINT8_T)obj_value.v_long;
       continue;
     case FFIDL_UINT16:
-      *(UINT16_T *)callout->args[i] = (UINT16_T)ltmp;
+      *(UINT16_T *)callout->args[i] = (UINT16_T)obj_value.v_long;
       continue;
     case FFIDL_SINT16:
-      *(SINT16_T *)callout->args[i] = (SINT16_T)ltmp;
+      *(SINT16_T *)callout->args[i] = (SINT16_T)obj_value.v_long;
       continue;
     case FFIDL_UINT32:
-      *(UINT32_T *)callout->args[i] = (UINT32_T)ltmp;
+      *(UINT32_T *)callout->args[i] = (UINT32_T)obj_value.v_long;
       continue;
     case FFIDL_SINT32:
-      *(SINT32_T *)callout->args[i] = (SINT32_T)ltmp;
+      *(SINT32_T *)callout->args[i] = (SINT32_T)obj_value.v_long;
       continue;
 #if HAVE_INT64
     case FFIDL_UINT64:
-      *(UINT64_T *)callout->args[i] = (UINT64_T)wtmp;
+      *(UINT64_T *)callout->args[i] = (UINT64_T)obj_value.v_wideint;
       continue;
     case FFIDL_SINT64:
-      *(SINT64_T *)callout->args[i] = (SINT64_T)wtmp;
+      *(SINT64_T *)callout->args[i] = (SINT64_T)obj_value.v_wideint;
       continue;
 #endif
     case FFIDL_STRUCT:
@@ -3071,9 +2981,9 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
       continue;
     case FFIDL_PTR:
 #if FFIDL_POINTER_IS_LONG
-      *(void **)callout->args[i] = (void *)ltmp;
+      *(void **)callout->args[i] = (void *)obj_value.v_long;
 #else
-      *(void **)callout->args[i] = (void *)wtmp;
+      *(void **)callout->args[i] = (void *)obj_value.v_wideint;
 #endif
       continue;
     case FFIDL_PTR_OBJ:
