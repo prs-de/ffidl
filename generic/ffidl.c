@@ -587,9 +587,8 @@ enum ffidl_typecode {
 #define FFIDL_ARGRET		(FFIDL_ARG|FFIDL_RET)
 #define FFIDL_GETINT		0x020	/* arg needs an int value */
 #define FFIDL_GETDOUBLE		0x040	/* arg needs a double value */
-#define FFIDL_GETBYTES		0x080	/* arg needs a bytearray value */
+#define FFIDL_GETWIDEINT	0x080	/* arg needs a wideInt value */
 #define FFIDL_STATIC_TYPE	0x100	/* do not free this type */
-#define FFIDL_GETWIDEINT	0x200	/* arg needs a wideInt value */
 
 /*
  * Tcl object type used for representing pointers within Tcl.
