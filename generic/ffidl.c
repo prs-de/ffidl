@@ -1574,7 +1574,7 @@ static int cif_raw_supported(ffidl_cif *cif)
        libffi < 3.3). */
     if (atype->typecode == FFIDL_STRUCT
 #if HAVE_LONG_DOUBLE
-	|| atypes->typecode == FFIDL_LONGDOUBLE
+	|| atype->typecode == FFIDL_LONGDOUBLE
 #endif
       )
       raw_api_supported = 0;
