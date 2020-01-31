@@ -2041,6 +2041,8 @@ static void callout_call(ffidl_callout *callout)
 
   for (i = 0; i < cif->argc; i += 1) {
     switch (cif->atypes[i]->typecode) {
+    case FFIDL_VOID:
+      continue;
     case FFIDL_INT:
       av_int(alist,*(int *)callout->args[i]);
       continue;
