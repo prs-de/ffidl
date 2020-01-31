@@ -3148,6 +3148,8 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
   ffidl_cif *cif = NULL;
   ffidl_callout *callout;
   ffidl_client *client = (ffidl_client *)clientData;
+  ffidl_value *rvalue = NULL;
+  ffidl_value *avalues = NULL;
   int has_protocol = objc - 1 >= protocol_ix;
 
   /* usage check */
@@ -3210,8 +3212,8 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
   callout->client = client;
   /* set up return and argument pointers */
   callout->args = (void **)(callout+1);
-  ffidl_value *rvalue = (ffidl_value *)(callout->args+cif->argc);
-  ffidl_value *avalues = (ffidl_value *)(rvalue+1);
+  rvalue = (ffidl_value *)(callout->args+cif->argc);
+  avalues = (ffidl_value *)(rvalue+1);
   /* prep return value */
   if (callout_prep_value(interp, FFIDL_RET, objv[return_ix], cif->rtype,
 			 rvalue, &callout->ret) == TCL_ERROR) {
@@ -3499,10 +3501,11 @@ static int tcl_ffidl_library(ClientData clientData, Tcl_Interp *interp, int objc
 	case option_binding:
 	{
 	  int bindingOption;
+	  int status;
 
 	  i++;
-	  int status = Tcl_GetIndexFromObj(interp, objv[i], bindingOptions,
-					   "binding", 0, &bindingOption);
+	  status = Tcl_GetIndexFromObj(interp, objv[i], bindingOptions,
+				       "binding", 0, &bindingOption);
 	  if (status != TCL_OK) {
 	    return TCL_ERROR;
 	  }
@@ -3520,10 +3523,11 @@ static int tcl_ffidl_library(ClientData clientData, Tcl_Interp *interp, int objc
 	case option_visibility:
 	{
 	  int visibilityOption;
+	  int status;
 
 	  i++;
-	  int status = Tcl_GetIndexFromObj(interp, objv[i], visibilityOptions,
-					   "visibility", 0, &visibilityOption);
+	  status = Tcl_GetIndexFromObj(interp, objv[i], visibilityOptions,
+				       "visibility", 0, &visibilityOption);
 	  if (status != TCL_OK) {
 	    return TCL_ERROR;
 	  }
