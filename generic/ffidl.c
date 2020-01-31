@@ -860,7 +860,7 @@ struct ffidl_cif {
  */
 struct ffidl_callout {
   ffidl_cif *cif;
-  void (*fn)();
+  void (*fn)(void);
   ffidl_client *client;
   void *ret;		   /* Where to store the return value. */
   void **args;		   /* Where to store each of the arguments' values. */
@@ -3138,7 +3138,7 @@ static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc
   };
 
   char *name;
-  void (*fn)();
+  void (*fn)(void);
   int argc, i;
   Tcl_Obj **argv;
   Tcl_DString usage, ds;
