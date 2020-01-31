@@ -1236,7 +1236,7 @@ static Tcl_HashEntry *type_find(ffidl_client *client, ffidl_type *type)
 #endif
 
 /* build a binary format string */
-static int type_format(Tcl_Interp *interp, ffidl_type *type, int *offset)
+static int type_format(Tcl_Interp *interp, ffidl_type *type, size_t *offset)
 {
   int i;
   char buff[128];
@@ -2749,8 +2749,8 @@ static int tcl_ffidl_info(ClientData clientData, Tcl_Interp *interp, int objc, T
       return TCL_OK;
     }
     if (i == INFO_FORMAT) {
-      i = 0;
-      return type_format(interp, type, &i);
+      size_t offset = 0;
+      return type_format(interp, type, &offset);
     }
     Tcl_AppendResult(interp, "lost in ::ffidl::info?", NULL);
     return TCL_ERROR;
