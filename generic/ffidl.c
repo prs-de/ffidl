@@ -921,51 +921,58 @@ static const Tcl_ObjType *ffidl_double_ObjType;
 
 /*
  * base types, the ffi base types and some additional bits.
+ *
+ * NOTE: we no longer set the "libtype" field here, because MSVC forbids
+ * initializing a static data pointer with the address of a data object declared
+ * with the dllimport attribute, as is the case such with libffi's types.  See
+ * https://docs.microsoft.com/en-us/cpp/c-language/rules-and-limitations-for-dllimport-dllexport
+ * for details.  Instead, we initialize it in the client_alloc procedure.
  */
-#define init_type(size,type,class,alignment,libtype) { 1/*refs*/, size, type, class|FFIDL_STATIC_TYPE, alignment, 0/*nelts*/, 0/*elements*/, libtype }
+#define init_type(size,type,class,alignment) { 1/*refs*/, size, type, class|FFIDL_STATIC_TYPE, alignment, 0/*nelts*/, 0/*elements*/, 0/*libtype*/}
 
-static ffidl_type ffidl_type_void = init_type(0, FFIDL_VOID, FFIDL_RET|FFIDL_CBRET, 0, lib_type_void);
-static ffidl_type ffidl_type_char = init_type(SIZEOF_CHAR, FFIDL_CHAR, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_CHAR, lib_type_char);
-static ffidl_type ffidl_type_schar = init_type(SIZEOF_CHAR, FFIDL_SCHAR, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_CHAR, lib_type_schar);
-static ffidl_type ffidl_type_uchar = init_type(SIZEOF_CHAR, FFIDL_UCHAR, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_CHAR, lib_type_uchar);
-static ffidl_type ffidl_type_sshort = init_type(SIZEOF_SHORT, FFIDL_SSHORT, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_SHORT, lib_type_sshort);
-static ffidl_type ffidl_type_ushort = init_type(SIZEOF_SHORT, FFIDL_USHORT, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_SHORT, lib_type_ushort);
-static ffidl_type ffidl_type_sint = init_type(SIZEOF_INT, FFIDL_SINT, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT, lib_type_sint);
-static ffidl_type ffidl_type_uint = init_type(SIZEOF_INT, FFIDL_UINT, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT, lib_type_uint);
+/* NOTE: remember to update the "initialize types" section in client_alloc(). */
+static ffidl_type ffidl_type_void = init_type(0, FFIDL_VOID, FFIDL_RET|FFIDL_CBRET, 0);
+static ffidl_type ffidl_type_char = init_type(SIZEOF_CHAR, FFIDL_CHAR, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_CHAR);
+static ffidl_type ffidl_type_schar = init_type(SIZEOF_CHAR, FFIDL_SCHAR, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_CHAR);
+static ffidl_type ffidl_type_uchar = init_type(SIZEOF_CHAR, FFIDL_UCHAR, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_CHAR);
+static ffidl_type ffidl_type_sshort = init_type(SIZEOF_SHORT, FFIDL_SSHORT, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_SHORT);
+static ffidl_type ffidl_type_ushort = init_type(SIZEOF_SHORT, FFIDL_USHORT, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_SHORT);
+static ffidl_type ffidl_type_sint = init_type(SIZEOF_INT, FFIDL_SINT, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT);
+static ffidl_type ffidl_type_uint = init_type(SIZEOF_INT, FFIDL_UINT, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT);
 #if SIZEOF_LONG == 8
-static ffidl_type ffidl_type_slong = init_type(SIZEOF_LONG, FFIDL_SLONG, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_LONG, lib_type_slong);
-static ffidl_type ffidl_type_ulong = init_type(SIZEOF_LONG, FFIDL_ULONG, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_LONG, lib_type_ulong);
+static ffidl_type ffidl_type_slong = init_type(SIZEOF_LONG, FFIDL_SLONG, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_LONG);
+static ffidl_type ffidl_type_ulong = init_type(SIZEOF_LONG, FFIDL_ULONG, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_LONG);
 #else
-static ffidl_type ffidl_type_slong = init_type(SIZEOF_LONG, FFIDL_SLONG, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_LONG, lib_type_slong);
-static ffidl_type ffidl_type_ulong = init_type(SIZEOF_LONG, FFIDL_ULONG, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_LONG, lib_type_ulong);
+static ffidl_type ffidl_type_slong = init_type(SIZEOF_LONG, FFIDL_SLONG, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_LONG);
+static ffidl_type ffidl_type_ulong = init_type(SIZEOF_LONG, FFIDL_ULONG, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_LONG);
 #endif
 #if HAVE_LONG_LONG
-static ffidl_type ffidl_type_slonglong = init_type(SIZEOF_LONG_LONG, FFIDL_SLONGLONG, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_LONG_LONG, lib_type_slonglong);
-static ffidl_type ffidl_type_ulonglong = init_type(SIZEOF_LONG_LONG, FFIDL_ULONGLONG, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_LONG_LONG, lib_type_ulonglong);
+static ffidl_type ffidl_type_slonglong = init_type(SIZEOF_LONG_LONG, FFIDL_SLONGLONG, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_LONG_LONG);
+static ffidl_type ffidl_type_ulonglong = init_type(SIZEOF_LONG_LONG, FFIDL_ULONGLONG, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_LONG_LONG);
 #endif
-static ffidl_type ffidl_type_float = init_type(SIZEOF_FLOAT, FFIDL_FLOAT, FFIDL_ALL|FFIDL_GETDOUBLE, ALIGNOF_FLOAT, lib_type_float);
-static ffidl_type ffidl_type_double = init_type(SIZEOF_DOUBLE, FFIDL_DOUBLE, FFIDL_ALL|FFIDL_GETDOUBLE, ALIGNOF_DOUBLE, lib_type_double);
+static ffidl_type ffidl_type_float = init_type(SIZEOF_FLOAT, FFIDL_FLOAT, FFIDL_ALL|FFIDL_GETDOUBLE, ALIGNOF_FLOAT);
+static ffidl_type ffidl_type_double = init_type(SIZEOF_DOUBLE, FFIDL_DOUBLE, FFIDL_ALL|FFIDL_GETDOUBLE, ALIGNOF_DOUBLE);
 #if HAVE_LONG_DOUBLE
-static ffidl_type ffidl_type_longdouble = init_type(SIZEOF_LONG_DOUBLE, FFIDL_LONGDOUBLE, FFIDL_ALL|FFIDL_GETDOUBLE, ALIGNOF_LONG_DOUBLE, lib_type_longdouble);
+static ffidl_type ffidl_type_longdouble = init_type(SIZEOF_LONG_DOUBLE, FFIDL_LONGDOUBLE, FFIDL_ALL|FFIDL_GETDOUBLE, ALIGNOF_LONG_DOUBLE);
 #endif
-static ffidl_type ffidl_type_sint8 = init_type(1, FFIDL_SINT8, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT8, lib_type_sint8);
-static ffidl_type ffidl_type_uint8 = init_type(1, FFIDL_UINT8, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT8, lib_type_uint8);
-static ffidl_type ffidl_type_sint16 = init_type(2, FFIDL_SINT16, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT16, lib_type_sint16);
-static ffidl_type ffidl_type_uint16 = init_type(2, FFIDL_UINT16, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT16, lib_type_uint16);
-static ffidl_type ffidl_type_sint32 = init_type(4, FFIDL_SINT32, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT32, lib_type_sint32);
-static ffidl_type ffidl_type_uint32 = init_type(4, FFIDL_UINT32, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT32, lib_type_uint32);
+static ffidl_type ffidl_type_sint8 = init_type(1, FFIDL_SINT8, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT8);
+static ffidl_type ffidl_type_uint8 = init_type(1, FFIDL_UINT8, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT8);
+static ffidl_type ffidl_type_sint16 = init_type(2, FFIDL_SINT16, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT16);
+static ffidl_type ffidl_type_uint16 = init_type(2, FFIDL_UINT16, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT16);
+static ffidl_type ffidl_type_sint32 = init_type(4, FFIDL_SINT32, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT32);
+static ffidl_type ffidl_type_uint32 = init_type(4, FFIDL_UINT32, FFIDL_ALL|FFIDL_GETINT, ALIGNOF_INT32);
 #if HAVE_INT64
-static ffidl_type ffidl_type_sint64 = init_type(8, FFIDL_SINT64, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_INT64, lib_type_sint64);
-static ffidl_type ffidl_type_uint64 = init_type(8, FFIDL_UINT64, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_INT64, lib_type_uint64);
+static ffidl_type ffidl_type_sint64 = init_type(8, FFIDL_SINT64, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_INT64);
+static ffidl_type ffidl_type_uint64 = init_type(8, FFIDL_UINT64, FFIDL_ALL|FFIDL_GETWIDEINT, ALIGNOF_INT64);
 #endif
-static ffidl_type ffidl_type_pointer       = init_type(SIZEOF_VOID_P, FFIDL_PTR,       FFIDL_ALL|FFIDL_GETPOINTER,           ALIGNOF_VOID_P, lib_type_pointer);
-static ffidl_type ffidl_type_pointer_obj   = init_type(SIZEOF_VOID_P, FFIDL_PTR_OBJ,   FFIDL_ARGRET|FFIDL_CBARG|FFIDL_CBRET, ALIGNOF_VOID_P, lib_type_pointer);
-static ffidl_type ffidl_type_pointer_utf8  = init_type(SIZEOF_VOID_P, FFIDL_PTR_UTF8,  FFIDL_ARGRET|FFIDL_CBARG,             ALIGNOF_VOID_P, lib_type_pointer);
-static ffidl_type ffidl_type_pointer_utf16 = init_type(SIZEOF_VOID_P, FFIDL_PTR_UTF16, FFIDL_ARGRET|FFIDL_CBARG,             ALIGNOF_VOID_P, lib_type_pointer);
-static ffidl_type ffidl_type_pointer_byte  = init_type(SIZEOF_VOID_P, FFIDL_PTR_BYTE,  FFIDL_ARG,                            ALIGNOF_VOID_P, lib_type_pointer);
-static ffidl_type ffidl_type_pointer_var   = init_type(SIZEOF_VOID_P, FFIDL_PTR_VAR,   FFIDL_ARG,                            ALIGNOF_VOID_P, lib_type_pointer);
+static ffidl_type ffidl_type_pointer       = init_type(SIZEOF_VOID_P, FFIDL_PTR,       FFIDL_ALL|FFIDL_GETPOINTER,           ALIGNOF_VOID_P);
+static ffidl_type ffidl_type_pointer_obj   = init_type(SIZEOF_VOID_P, FFIDL_PTR_OBJ,   FFIDL_ARGRET|FFIDL_CBARG|FFIDL_CBRET, ALIGNOF_VOID_P);
+static ffidl_type ffidl_type_pointer_utf8  = init_type(SIZEOF_VOID_P, FFIDL_PTR_UTF8,  FFIDL_ARGRET|FFIDL_CBARG,             ALIGNOF_VOID_P);
+static ffidl_type ffidl_type_pointer_utf16 = init_type(SIZEOF_VOID_P, FFIDL_PTR_UTF16, FFIDL_ARGRET|FFIDL_CBARG,             ALIGNOF_VOID_P);
+static ffidl_type ffidl_type_pointer_byte  = init_type(SIZEOF_VOID_P, FFIDL_PTR_BYTE,  FFIDL_ARG,                            ALIGNOF_VOID_P);
+static ffidl_type ffidl_type_pointer_var   = init_type(SIZEOF_VOID_P, FFIDL_PTR_VAR,   FFIDL_ARG,                            ALIGNOF_VOID_P);
 #if USE_CALLBACKS
-static ffidl_type ffidl_type_pointer_proc = init_type(SIZEOF_VOID_P, FFIDL_PTR_PROC, FFIDL_ARG, ALIGNOF_VOID_P, lib_type_pointer);
+static ffidl_type ffidl_type_pointer_proc = init_type(SIZEOF_VOID_P, FFIDL_PTR_PROC, FFIDL_ARG, ALIGNOF_VOID_P);
 #endif
 
 /*****************************************
@@ -2584,6 +2591,45 @@ static ffidl_client *client_alloc(Tcl_Interp *interp)
 #endif
 
   /* initialize types */
+  ffidl_type_void.lib_type = lib_type_void;
+  ffidl_type_char.lib_type = lib_type_char;
+  ffidl_type_schar.lib_type = lib_type_schar;
+  ffidl_type_uchar.lib_type = lib_type_uchar;
+  ffidl_type_sshort.lib_type = lib_type_sshort;
+  ffidl_type_ushort.lib_type = lib_type_ushort;
+  ffidl_type_sint.lib_type = lib_type_sint;
+  ffidl_type_uint.lib_type = lib_type_uint;
+  ffidl_type_slong.lib_type = lib_type_slong;
+  ffidl_type_ulong.lib_type = lib_type_ulong;
+#if HAVE_LONG_LONG
+  ffidl_type_slonglong.lib_type = lib_type_slonglong;
+  ffidl_type_ulonglong.lib_type = lib_type_ulonglong;
+#endif
+  ffidl_type_float.lib_type = lib_type_float;
+  ffidl_type_double.lib_type = lib_type_double;
+#if HAVE_LONG_DOUBLE
+  ffidl_type_longdouble.lib_type = lib_type_longdouble;
+#endif
+  ffidl_type_sint8.lib_type = lib_type_sint8;
+  ffidl_type_uint8.lib_type = lib_type_uint8;
+  ffidl_type_sint16.lib_type = lib_type_sint16;
+  ffidl_type_uint16.lib_type = lib_type_uint16;
+  ffidl_type_sint32.lib_type = lib_type_sint32;
+  ffidl_type_uint32.lib_type = lib_type_uint32;
+#if HAVE_INT64
+  ffidl_type_sint64.lib_type = lib_type_sint64;
+  ffidl_type_uint64.lib_type = lib_type_uint64;
+#endif
+  ffidl_type_pointer.lib_type       = lib_type_pointer;
+  ffidl_type_pointer_obj.lib_type   = lib_type_pointer;
+  ffidl_type_pointer_utf8.lib_type  = lib_type_pointer;
+  ffidl_type_pointer_utf16.lib_type = lib_type_pointer;
+  ffidl_type_pointer_byte.lib_type  = lib_type_pointer;
+  ffidl_type_pointer_var.lib_type   = lib_type_pointer;
+#if USE_CALLBACKS
+  ffidl_type_pointer_proc.lib_type = lib_type_pointer;
+#endif
+
   type_define(client, "void", &ffidl_type_void);
   type_define(client, "char", &ffidl_type_char);
   type_define(client, "signed char", &ffidl_type_schar);
