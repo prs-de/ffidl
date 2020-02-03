@@ -656,8 +656,10 @@ build_vendor
 build_cpu
 build
 FFIDL_TEST
+LIBFFCALL_LIBDIR
 LIBFFCALL_LIBS
 LIBFFCALL_CFLAGS
+LIBFFI_LIBDIR
 LIBFFI_LIBS
 LIBFFI_CFLAGS
 PKG_CONFIG_LIBDIR
@@ -787,8 +789,10 @@ PKG_CONFIG_PATH
 PKG_CONFIG_LIBDIR
 LIBFFI_CFLAGS
 LIBFFI_LIBS
+LIBFFI_LIBDIR
 LIBFFCALL_CFLAGS
-LIBFFCALL_LIBS'
+LIBFFCALL_LIBS
+LIBFFCALL_LIBDIR'
 
 
 # Initialize some variables set by options.
@@ -1459,10 +1463,14 @@ Some influential environment variables:
   LIBFFI_CFLAGS
               C compiler flags for LIBFFI, overriding pkg-config
   LIBFFI_LIBS linker flags for LIBFFI, overriding pkg-config
+  LIBFFI_LIBDIR
+              value of libdir for libffi, overriding pkg-config
   LIBFFCALL_CFLAGS
               C compiler flags for LIBFFCALL, overriding pkg-config
   LIBFFCALL_LIBS
               linker flags for LIBFFCALL, overriding pkg-config
+  LIBFFCALL_LIBDIR
+              value of libdir for libffcall, overriding pkg-config
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -5996,6 +6004,23 @@ case $with_libffi,$with_libffcall in #(
         as_fn_error $? "Please, enable either of --with-libffi or --with-libffcall." "$LINENO" 5 ;;
 esac
 
+# tcl.m4 does not offer static library suffix; chose one based on its shared
+# library one.  Must be placed after TE*_CONFIG_CFLAGS.
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for static library suffix (SHLIB_SUFFIX=$SHLIB_SUFFIX)" >&5
+$as_echo_n "checking for static library suffix (SHLIB_SUFFIX=$SHLIB_SUFFIX)... " >&6; }
+case $SHLIB_SUFFIX in #(
+  ".so") :
+    STLIB_SUFFIX=".a" ;; #(
+  ".dylib") :
+    STLIB_SUFFIX=".a" ;; #(
+  *) :
+    STLIB_SUFFIX=".lib" ;;
+esac
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $STLIB_SUFFIX" >&5
+$as_echo "$STLIB_SUFFIX" >&6; }
+
+
+
 
 
 
@@ -6116,10 +6141,13 @@ $as_echo "no" >&6; }
 		PKG_CONFIG=""
 	fi
 fi
-if test "x$with_libffi" = "xyes"; then :
+if test "x$with_libffi" = xyes; then :
 
 $as_echo "#define USE_LIBFFI 1" >>confdefs.h
 
+               if ${LIBFFI_LIBS+:} false; then :
+  enable_libffi_static=no
+fi
 
 pkg_failed=no
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for libffi" >&5
@@ -6209,9 +6237,32 @@ else
 	LIBFFI_LIBS=$pkg_cv_LIBFFI_LIBS
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		 if test "x$enable_libffi_static" = "xyes"; then :
-  LIBFFI_LIBDIR=`$PKG_CONFIG libffi --variable=libdir`
-	     LIBFFI_LIBS=$LIBFFI_LIBDIR/libffi.a
+		 	 if test "x$enable_libffi_static" = xyes; then :
+
+if test -n "$LIBFFI_LIBDIR"; then
+    pkg_cv_LIBFFI_LIBDIR="$LIBFFI_LIBDIR"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libffi\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libffi") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_LIBFFI_LIBDIR=`$PKG_CONFIG --variable="libdir" "libffi" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+LIBFFI_LIBDIR=$pkg_cv_LIBFFI_LIBDIR
+
+if test "x$LIBFFI_LIBDIR" = x""; then :
+
+else
+  LIBFFI_LIBS="${LIBFFI_LIBDIR}/libffi${STLIB_SUFFIX}"
+fi
 fi
 fi
 
@@ -6234,10 +6285,13 @@ fi
 
 fi
 
-if test "x$with_libffcall" = "xyes"; then :
+if test "x$with_libffcall" = xyes; then :
 
 $as_echo "#define USE_LIBFFCALL 1" >>confdefs.h
 
+          if ${LIBFFCALL_LIBS+:} false; then :
+  enable_libffcall_static=no
+fi
 
 pkg_failed=no
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for libffcall" >&5
@@ -6327,13 +6381,32 @@ else
 	LIBFFCALL_LIBS=$pkg_cv_LIBFFCALL_LIBS
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-		 if test "x$enable_libffcall_static" = "xyes"; then :
-  if ${LIBFFCALL_LIBDIR+:} false; then :
+		 if test "x$enable_libffcall_static" = xyes; then :
+
+if test -n "$LIBFFCALL_LIBDIR"; then
+    pkg_cv_LIBFFCALL_LIBDIR="$LIBFFCALL_LIBDIR"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libffcall\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libffcall") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_LIBFFCALL_LIBDIR=`$PKG_CONFIG --variable="libdir" "libffcall" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+LIBFFCALL_LIBDIR=$pkg_cv_LIBFFCALL_LIBDIR
+
+if test "x$LIBFFCALL_LIBDIR" = x""; then :
 
 else
-  LIBFFCALL_LIBDIR=`$PKG_CONFIG libffcall --variable=libdir`
+  LIBFFCALL_LIBS="${LIBFFCALL_LIBDIR}/libavcall${STLIB_SUFFIX} ${LIBFFCALL_LIBDIR}/libcallback${STLIB_SUFFIX}"
 fi
-	     LIBFFCALL_LIBS="${LIBFFCALL_LIBDIR}/libavcall.a ${LIBFFCALL_LIBDIR}/libcallback.a"
 fi
 fi
 
@@ -10602,6 +10675,13 @@ LTLIBOBJS=$ac_ltlibobjs
 
 as_fn_append DEFS " -DHAVE_FFIDL_CONFIG_H"
 
+# Must define -DFFI_BUILDING when linking statically, see commentary of FFI_API
+     # in ffi.h for details.
+     if test "x$with_libffi" = xyes; then :
+  if test "x$enable_libffi_static" = xyes; then :
+  as_fn_append DEFS " -DFFI_BUILDING=static"
+fi
+fi
 CFLAGS="${CFLAGS} ${CPPFLAGS}"; CPPFLAGS=""
 
 : "${CONFIG_STATUS=./config.status}"

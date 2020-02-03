@@ -172,25 +172,47 @@ AS_CASE([$with_libffi,$with_libffcall],
     [yes,no],[], dnl continue
     [AC_MSG_ERROR([Please, enable either of --with-libffi or --with-libffcall.])])
 
-AS_IF([test "x$with_libffi" = "xyes"],
-    [AC_DEFINE(USE_LIBFFI, 1, [Use libffi for foreign function calls])
+# tcl.m4 does not offer static library suffix; chose one based on its shared
+# library one.  Must be placed after TE*_CONFIG_CFLAGS.
+AC_MSG_CHECKING([for static library suffix (SHLIB_SUFFIX=$SHLIB_SUFFIX)])
+AS_CASE([$SHLIB_SUFFIX],
+    [".so"], [STLIB_SUFFIX=".a"],
+    [".dylib"], [STLIB_SUFFIX=".a"],
+    [STLIB_SUFFIX=".lib"])
+AC_MSG_RESULT([$STLIB_SUFFIX])
+
+AC_CONFIG_COMMANDS_PRE(
+    [# Must define -DFFI_BUILDING when linking statically, see commentary of FFI_API
+     # in ffi.h for details.
+     AS_VAR_IF([with_libffi], [yes],
+        [AS_VAR_IF([enable_libffi_static], [yes],
+            [AS_VAR_APPEND([DEFS], [" -DFFI_BUILDING=static"])])])])
+
+AS_VAR_IF([with_libffi], [yes],
+    [AC_DEFINE([USE_LIBFFI], 1, [Use libffi for foreign function calls])
+     dnl Do not try to guess static linking absolute path if LIBFFI_LIBS was
+     dnl explicitely given.
+     AS_VAR_SET_IF([LIBFFI_LIBS], [enable_libffi_static=no])
      PKG_CHECK_MODULES([LIBFFI], [libffi],
-	[dnl Must pass the full path for static linking.
-	 AS_IF([test "x$enable_libffi_static" = "xyes"],
-	    [AS_VAR_SET([LIBFFI_LIBDIR], [`$PKG_CONFIG libffi --variable=libdir`])
-	     AS_VAR_SET([LIBFFI_LIBS], [$LIBFFI_LIBDIR/libffi.a])])])
+	[dnl Must pass the full path for static linking.  pkg-config does not
+	 dnl provide this information, so we construct it from what we have.
+	 AS_VAR_IF([enable_libffi_static], [yes],
+	    [PKG_CHECK_VAR([LIBFFI_LIBDIR], [libffi], [libdir],
+		[AS_VAR_SET([LIBFFI_LIBS], ["${LIBFFI_LIBDIR}/libffi${STLIB_SUFFIX}"])])])])
      TEA_ADD_INCLUDES([$LIBFFI_CFLAGS])
      TEA_ADD_LIBS([$LIBFFI_LIBS])])
 
-AS_IF([test "x$with_libffcall" = "xyes"],
-    [AC_DEFINE(USE_LIBFFCALL, 1, [Use libffcall for foreign function calls])
+dnl See with_libffi comments above.
+AS_VAR_IF([with_libffcall], [yes],
+    [AC_DEFINE([USE_LIBFFCALL], 1, [Use libffcall for foreign function calls])
+     dnl When LIBFFCALL_LIBS
+     AS_VAR_SET_IF([LIBFFCALL_LIBS], [enable_libffcall_static=no])
      PKG_CHECK_MODULES([LIBFFCALL], [libffcall],
 	[dnl Must pass the full path for static linking.
-	 AS_IF([test "x$enable_libffcall_static" = "xyes"],
-	    [AS_VAR_SET_IF([LIBFFCALL_LIBDIR],
-		[],
-		[AS_VAR_SET([LIBFFCALL_LIBDIR], [`$PKG_CONFIG libffcall --variable=libdir`])])
-	     AS_VAR_SET([LIBFFCALL_LIBS], ["${LIBFFCALL_LIBDIR}/libavcall.a ${LIBFFCALL_LIBDIR}/libcallback.a"])])])
+	 AS_VAR_IF([enable_libffcall_static], [yes],
+	    [PKG_CHECK_VAR([LIBFFCALL_LIBDIR], [libffcall], [libdir],
+		[AS_VAR_SET([LIBFFCALL_LIBS],
+			    ["${LIBFFCALL_LIBDIR}/libavcall${STLIB_SUFFIX} ${LIBFFCALL_LIBDIR}/libcallback${STLIB_SUFFIX}"])])])])
      TEA_ADD_INCLUDES([$LIBFFCALL_CFLAGS])
      TEA_ADD_LIBS([$LIBFFCALL_LIBS])])
 
