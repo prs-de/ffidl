@@ -818,10 +818,10 @@ struct ffidl_type {
 
 /*
  * The ffidl_client contains
- * a hashtable for ffidl-typedef definitions,
- * a hashtable for ffidl-callout definitions,
+ * a hashtable for ffidl::typedef definitions,
+ * a hashtable for ffidl::callout definitions,
  * a hashtable for cif's keyed by signature,
- * a hashtable of libs loaded by ffidl-symbol,
+ * a hashtable of libs loaded by ffidl::symbol,
  * a hashtable of callbacks keyed by proc name
  */
 struct ffidl_client {
@@ -2873,7 +2873,7 @@ static int tcl_ffidl_info(ClientData clientData, Tcl_Interp *interp, int objc, T
   return TCL_ERROR;
 }
 
-/* usage: ffidl-typedef name type1 ?type2 ...? */
+/* usage: ffidl::typedef name type1 ?type2 ...? */
 static int tcl_ffidl_typedef(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
   enum {
@@ -2961,7 +2961,7 @@ static int tcl_ffidl_typedef(ClientData clientData, Tcl_Interp *interp, int objc
   return TCL_OK;
 }
 
-/* usage: depends on the signature defining the ffidl-callout */
+/* usage: depends on the signature defining the ffidl::callout */
 static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
   enum {
@@ -3171,7 +3171,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
   return TCL_ERROR;
 }
 
-/* usage: ffidl-callout name {?argument_type ...?} return_type address ?protocol? */
+/* usage: ffidl::callout name {?argument_type ...?} return_type address ?protocol? */
 static int tcl_ffidl_callout(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
   enum {
@@ -3294,7 +3294,7 @@ error:
 }
 
 #if USE_CALLBACKS
-/* usage: ffidl-callback name {?argument_type ...?} return_type ?protocol? ?cmdprefix? -> */
+/* usage: ffidl::callback name {?argument_type ...?} return_type ?protocol? ?cmdprefix? -> */
 static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
   enum {
@@ -3612,7 +3612,7 @@ static int tcl_ffidl_library(ClientData clientData, Tcl_Interp *interp, int objc
   return TCL_OK;
 }
 
-/* usage: ffidl-symbol library symbol -> address */
+/* usage: ffidl::symbol library symbol -> address */
 static int tcl_ffidl_symbol(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
   enum {
@@ -3652,7 +3652,7 @@ static int tcl_ffidl_symbol(ClientData clientData, Tcl_Interp *interp, int objc,
   return TCL_OK;
 }
 
-/* usage: ffidl-stubsymbol library stubstable symbolnumber -> address */
+/* usage: ffidl::stubsymbol library stubstable symbolnumber -> address */
 static int tcl_ffidl_stubsymbol(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
   enum {
@@ -3733,7 +3733,7 @@ static int tcl_ffidl_stubsymbol(ClientData clientData, Tcl_Interp *interp, int o
 }
 
 /*
- * One function exported for pointer punning with ffidl-callout.
+ * One function exported for pointer punning with ffidl::callout.
  */
 void *ffidl_pointer_pun(void *p) { return p; }
 
