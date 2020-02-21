@@ -19,8 +19,16 @@ test ffidl-basic {ffidl basic tests} {} {
     set msg ""
     
     ::ffidl::callout ffidl_test_signatures {} pointer-utf8 [::ffidl::symbol $lib ffidl_test_signatures]
-    ::ffidl::typedef ffidl_test_struct {signed char} {short} {int} {long} float double pointer \
-        {unsigned char} {unsigned char} {unsigned char} {unsigned char} {unsigned char} {unsigned char} {unsigned char} {unsigned char}
+    ::ffidl::typedef ffidl_test_struct \
+	{signed char} \
+	short \
+	int \
+	long \
+	float \
+	double \
+	pointer \
+        {unsigned char} {unsigned char} {unsigned char} {unsigned char} \
+	{unsigned char} {unsigned char} {unsigned char} {unsigned char}
     
     array set types {
         void void
@@ -170,6 +178,98 @@ test ffidl-basic {ffidl basic tests} {} {
         }
     }
     set msg
+} {}
+
+# Sanity check
+test ffidl-info-alignof {ffidl::info alignof test} {} {
+    ffidl::info alignof char
+} 1
+
+# Sanity check
+test ffidl-info-format {ffidl::info format test} {} {
+    ffidl::info format char
+} c
+
+# Sanity check
+test ffidl-info-format {ffidl::info sizeof test} {} {
+    ffidl::info sizeof char
+} 1
+
+test ffidl-info-callbacks {ffidl::info callbacks tests} {} {
+    if {[::ffidl::info use-callbacks]} {
+	set cbs1 [::ffidl::info callbacks];
+	set cbname ::ffidl-info-callbacks;
+	::ffidl::callback $cbname {} void;
+	set cbs2 [::ffidl::info callbacks];
+	expr {$cbname ni $cbs1 && $cbname in $cbs2}
+    } else {
+	return 1;
+    }
+} 1
+
+test ffidl-info-callouts {ffidl::info callouts tests} {} {
+    set cos1 [ffidl::info callouts];
+    set cname ::ffidl-info-callouts;
+    ::ffidl::callout $cname {} void 0;
+    set cos2 [ffidl::info callouts];
+    expr {$cname ni $cos1 && $cname in $cos2}
+} 1
+
+test ffidl-info-libraries {ffidl::info libraries tests} {} {
+    # Not a great test: make sure the test library is loaded.
+    if {$lib ni [::ffidl::info libraries]} {
+	ffidl::library $lib;
+    }
+    expr {$lib in [::ffidl::info libraries]}
+} 1
+
+test ffidl-info-signatures {ffidl::info signatures tests} {} {
+    # Add a new type and a callout using it, then check that there is a
+    # signature with that type.
+    set tname ffidl-info-signatures-type;
+    set cname ::ffidl-info-signatures-callout;
+    ::ffidl::typedef $tname char;
+    ::ffidl::callout $cname [list $tname] $tname 0;
+    set sig "${tname}(${tname})";
+    expr {$sig in [::ffidl::info signatures]};
+} 1
+
+test ffidl-info-typedefs {ffidl::info typedefs tests} {} {
+    set tname ffidl-info-typedefs;
+    ffidl::typedef $tname char;
+    expr {$tname in [ffidl::info typedefs]};
+} 1
+
+# Check they don't error.
+test ffidl-info-flags {ffidl::info flags tests} {} {
+    foreach flag {
+	"have-int64"
+	"have-long-double"
+	"have-long-long"
+	"use-callbacks"
+	"use-ffcall"
+	"use-libffcall"
+	"use-libffi"
+	"use-libffi-raw"
+	"canonical-host"
+    } {
+	ffidl::info $flag;
+    }
+    return "";
+} {}
+
+# Check they return pointers.
+test ffidl-info-poi {ffidl::info pointers tests} {} {
+    foreach poi {
+	"interp"
+	"NULL"
+    } {
+	set ptr [::ffidl::info $poi];
+	if {![string is wideinteger -strict $ptr]} {
+	    error "invalid value returned by ::ffidl::info $poi: $ptr";
+	}
+    }
+    return "";
 } {}
 
 # cleanup
