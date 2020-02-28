@@ -1606,7 +1606,7 @@ static int cif_raw_prep_offsets(ffidl_cif *cif, ptrdiff_t *offsets)
       offset = (offset|(FFI_SIZEOF_ARG-1))+1;
   }
   if (offset != bytes) {
-    fprintf(stderr, "ffidl and libffi disagree about bytes of argument! %d != %d\n", offset, bytes);
+    fprintf(stderr, "ffidl and libffi disagree about bytes of argument! %td != %zd\n", offset, bytes);
     return TCL_ERROR;
   }
   return TCL_OK;
