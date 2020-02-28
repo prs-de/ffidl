@@ -1631,42 +1631,48 @@ static int cif_prep(ffidl_cif *cif)
 #endif
   return TCL_OK;
 }
+
+struct ffidl_protocolmap {
+  char *protocolname;
+  enum ffi_abi protocol;
+};
+typedef struct ffidl_protocolmap ffidl_protocolmap;
+static const ffidl_protocolmap protocolmap[] = {
+  {"", FFI_DEFAULT_ABI},
+  {"default", FFI_DEFAULT_ABI},
+#  if defined(X86_WIN64)
+  {"win64", FFI_WIN64},
+#  else	 /* X86_WIN64 */
+  {"cdecl", FFI_SYSV},
+  {"sysv", FFI_SYSV},
+  {"stdcall", FFI_STDCALL},
+  {"thiscall", FFI_THISCALL},
+  {"fastcall", FFI_FASTCALL},
+#    if defined(X86_WIN32)
+  {"mscdecl", FFI_MS_CDECL},
+#    elif defined(X86_64)	/* X86_WIN32 */
+  {"unix64", FFI_UNIX64},
+#    endif  /* X86_64 */
+#  endif    /* X86_WIN64 */
+  {NULL,}
+};
+
 /* find the protocol, ie abi, for this cif */
 static int cif_protocol(Tcl_Interp *interp, Tcl_Obj *obj, int *protocolp, char **protocolnamep)
 {
 #if USE_LIBFFI
-  if (obj != NULL) {
-    int len = 0;
-    *protocolnamep = Tcl_GetStringFromObj(obj, &len);
-    if (len == 0 || strcmp(*protocolnamep, "default") == 0) {
-      *protocolp = FFI_DEFAULT_ABI;
-      *protocolnamep = NULL;
-#  if defined(X86_WIN64)
-    } else if (strcmp(*protocolnamep, "win64") == 0) {
-      *protocolp = FFI_WIN64;
-#  else	 /* X86_WIN64 */
-    } else if (strcmp(*protocolnamep, "cdecl") == 0 ||
-	       strcmp(*protocolnamep, "sysv") == 0) {
-      *protocolp = FFI_SYSV;
-    } else if (strcmp(*protocolnamep, "stdcall") == 0) {
-      *protocolp = FFI_STDCALL;
-    } else if (strcmp(*protocolnamep, "thiscall") == 0) {
-      *protocolp = FFI_THISCALL;
-    } else if (strcmp(*protocolnamep, "fastcall") == 0) {
-      *protocolp = FFI_FASTCALL;
-#    if defined(X86_WIN32)
-    } else if (strcmp(*protocolnamep, "mscdecl") == 0) {
-      *protocolp = FFI_MS_CDECL;
-#    elif defined(X86_64)	/* X86_WIN32 */
-    } else if (strcmp(*protocolnamep, "unix64") == 0) {
-      *protocolp = FFI_UNIX64;
-#    endif  /* X86_64 */
-#  endif  /* X86_WIN64 */
-    } else {
-      Tcl_AppendResult(interp, "unknown protocol \"", *protocolnamep,
-		       "\", must be cdecl or stdcall",
-		       NULL);
+  if (obj) {
+    int idx = 0;
+    if (TCL_OK != Tcl_GetIndexFromObjStruct(interp, obj, &protocolmap,
+					    sizeof(ffidl_protocolmap),
+					    "protocol", 0, &idx)) {
       return TCL_ERROR;
+    }
+    *protocolp = protocolmap[idx].protocol;
+    if (*protocolp == FFI_DEFAULT_ABI) {
+      *protocolnamep = NULL;
+    } else {
+      *protocolnamep = protocolmap[idx].protocolname;
     }
   } else {
     *protocolp = FFI_DEFAULT_ABI;
