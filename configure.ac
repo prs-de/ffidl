@@ -194,7 +194,6 @@ if test "$tcl_ok" = "yes"; then
 fi
 AC_SUBST(FFIDL_TEST)
 
-AC_C_CHAR_UNSIGNED
 AC_CHECK_SIZEOF([char])
 AC_CHECK_ALIGNOF([char])
 AC_CHECK_SIZEOF([short])

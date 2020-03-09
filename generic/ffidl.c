@@ -100,6 +100,12 @@ static void *tkStubsPtr, *tkPlatStubsPtr, *tkIntStubsPtr, *tkIntPlatStubsPtr, *t
 /* Needed for MSVC (error C2065: 'INT64_MIN' : undeclared identifier) */
 #include <stdint.h>
 
+/* AC_C_CHAR_UNSIGNED */
+#include <limits.h>
+#if CHAR_MIN == 0
+# define CHAR_UNSIGNED 1
+#endif
+
 /*
  * We can use either
  * libffi, with a no strings attached license,
@@ -189,7 +195,7 @@ static void *tkStubsPtr, *tkPlatStubsPtr, *tkIntStubsPtr, *tkIntPlatStubsPtr, *t
 #endif
 #endif
 
-#if defined(__CHAR_UNSIGNED__)
+#if defined(CHAR_UNSIGNED)
 #define lib_type_char	&ffi_type_uint8
 #else
 #define lib_type_char	&ffi_type_sint8
@@ -436,7 +442,7 @@ enum ffidl_typecode {
 /*
  * aliases for unsized type names
  */
-#if defined(__CHAR_UNSIGNED__)
+#if defined(CHAR_UNSIGNED)
     FFIDL_CHAR	= FFIDL_UINT8,
 #else
     FFIDL_CHAR	= FFIDL_SINT8,
