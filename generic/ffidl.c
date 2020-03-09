@@ -352,7 +352,7 @@ typedef Tcl_FSUnloadFileProc *ffidl_UnloadProc;
 typedef void *ffidl_LoadHandle;
 typedef void *ffidl_UnloadProc;
 
-#if defined(__WIN32__)
+#if defined(_WIN32)
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -378,7 +378,7 @@ typedef void *ffidl_UnloadProc;
 #   define RTLD_GLOBAL 0
 #endif
 #endif	/* NO_DLFCN_H */
-#endif	/* __WIN32__ */
+#endif	/* _WIN32 */
 #endif	/* USE_TCL_DLOPEN */
 
 enum ffidl_load_binding {
@@ -996,7 +996,7 @@ static int ffidlsymfallback(ffidl_LoadHandle handle,
 			    char *error)
 {
   int status = TCL_OK;
-#if defined(__WIN32__)
+#if defined(_WIN32)
   /*
    * Ack, what about data?  I guess they're not particular,
    * some windows headers declare data as dll import, eg
@@ -1014,7 +1014,7 @@ static int ffidlsymfallback(ffidl_LoadHandle handle,
   if (error) {
     status = TCL_ERROR;
   }
-#endif /* __WIN32__ */
+#endif /* _WIN32 */
   return status;
 }
 #endif /* !USE_TCL_DLOPEN && !USE_TCL_LOADFILE */
@@ -1115,7 +1115,7 @@ static int ffidlopen(Tcl_Interp *interp,
   nativeLibraryName = Tcl_UtfToExternalDString(NULL, libraryName, -1, &ds);
   nativeLibraryName = strlen(nativeLibraryName) ? nativeLibraryName : NULL;
 
-#if defined(__WIN32__)
+#if defined(_WIN32)
   if (flags.binding != FFIDL_LOAD_BINDING_NONE ||
       flags.visibility != FFIDL_LOAD_VISIBILITY_NONE) {
     error = "loading flags are not supported under windows";
@@ -1169,7 +1169,7 @@ static int ffidlclose(Tcl_Interp *interp,
     error = Tcl_GetStringResult(interp);
   }
 #else
-#if defined(__WIN32__)
+#if defined(_WIN32)
   if (!FreeLibrary(handle)) {
     status = TCL_ERROR;
     error = "unknown error";
