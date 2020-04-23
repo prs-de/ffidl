@@ -3,7 +3,7 @@
 #
 # Run time support for Ffidl.
 #
-package provide Ffidlrt 0.2
+package provide Ffidlrt 0.3
 package require Ffidl
 
 namespace eval ::ffidl:: {}
@@ -292,13 +292,29 @@ proc ::ffidl::get-bytearray {obj} {
 # Needless to say, this can be very hazardous to your
 # program's health if things aren't sized correctly.
 #
+::ffidl::callout ::ffidl::memcpy {pointer-var pointer size_t} pointer [::ffidl::symbol [::ffidl::find-lib c] memcpy];
 
-::ffidl::callout ::ffidl::memcpy {pointer-var pointer int} pointer [::ffidl::symbol [::ffidl::find-lib c] memcpy]
+#
+# Regular memcpy working on pointers.  ::ffidl::memcpy kept as is for compatibilitiy.
+#
+::ffidl::callout ::ffidl::memcpy2 {pointer pointer size_t} pointer [::ffidl::symbol [::ffidl::find-lib c] memcpy];
 
+#
+# Create a Tcl bytearray with a copy of the contents some memory location.
+#
 proc ::ffidl::peek {address nbytes} {
     set dst [binary format x$nbytes]
     ::ffidl::memcpy dst $address $nbytes
     set dst
+}
+
+#
+# Copy the contents of a Tcl bytearray to some memory location.
+#
+proc ::ffidl::poke {dst src} {
+    set n [string length $bytes];
+    set src [::ffidl::get-bytearray $bytes];
+    ::ffidl::memcpy2 $dst $src $n;
 }
 
 #
