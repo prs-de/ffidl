@@ -306,8 +306,5 @@ proc ::ffidl::peek {address nbytes} {
 #
 ::ffidl::callout ::ffidl::pointer-into-string {pointer} pointer-utf8 [::ffidl::symbol [::ffidl::find-lib ffidl] ffidl_pointer_pun]
 ::ffidl::callout ::ffidl::pointer-into-unicode {pointer} pointer-utf16 [::ffidl::symbol [::ffidl::find-lib ffidl] ffidl_pointer_pun]
-proc ::ffidl::pointer-into-bytearray {pointer length} {
-    set bytes [binary format x$length]
-    ::ffidl::memcpy [::ffidl::get-bytearray $bytes] $pointer $length
-    set bytes
-}
+# ::ffidl::pointer-into-bytearray is deprecated. Use ::ffidl::peek instead.
+interp alias {} ::ffidl::pointer-into-bytearray {} ::ffidl::peek;
