@@ -128,6 +128,7 @@ Hello libc!
           value of <code>NULL</code> pointers for the architecture</li>
           <li><i>Feat</i> support specifying library binding time and symbol
           visibility</li>
+          <li><i>Feat</i> Documentation improvements</li>
           <li><i>Fix</i> check protocol name on non-Windows platforms</li>
           <li><i>Fix</i> misuse of libffi's return value API</li>
           <li><i>Fix</i> double-free upon deleting interpreter</li>
@@ -375,13 +376,13 @@ Hello libc!
                 <b>::ffidl::info callbacks</b>
               </dt>
               <dd>
-                returns a list of <b>::ffidl::callback</b> declared names.
+                returns a list of callbacks defined with <b>::ffidl::callback</b>.
               </dd>
               <dt>
                 <b>::ffidl::info callouts</b>
               </dt>
               <dd>
-                returns a list of <b>::ffidl::callout</b> defined names.
+                returns a list of callouts defined with <b>::ffidl::callout</b>.
               </dd>
               <dt>
                 <b>::ffidl::info canonical-host</b>
@@ -428,7 +429,7 @@ Hello libc!
               </dt>
               <dd>
                 returns the list of libraries opened by
-                <b>::ffidl::symbol</b>.
+                <b>::ffidl::library</b> or <b>::ffidl::symbol</b>.
               </dd>
               <dt>
                 <b>::ffidl::info signatures</b>
@@ -447,7 +448,7 @@ Hello libc!
                 <b>::ffidl::info typedefs</b>
               </dt>
               <dd>
-                returns a list of <b>::ffidl::typedef</b> defined names.
+                returns a list of types defined with <b>::ffidl::typedef</b>.
               </dd>
               <dt>
                 <b>::ffidl::info use-callbacks</b>
