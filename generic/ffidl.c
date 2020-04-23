@@ -3683,7 +3683,10 @@ static int tcl_ffidl_stubsymbol(ClientData clientData, Tcl_Interp *interp, int o
     NULL
   };
   enum libraries {
-    LIB_TCL, LIB_TK,
+    LIB_TCL,
+#if defined(LOOKUP_TK_STUBS)
+    LIB_TK,
+#endif
   };
   static const char *stubstable_names[] = {
     "stubs", "intStubs", "platStubs", "intPlatStubs", "intXLibStubs", NULL
