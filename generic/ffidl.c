@@ -1962,7 +1962,6 @@ static int callout_prep(ffidl_callout *callout)
   ffidl_cif *cif = callout->cif;
 
   callout->use_raw_api = cif_raw_supported(cif);
-  callout->use_raw_api = 0;
 
   if (callout->use_raw_api) {
     /* rewrite callout->args[i] into a stack image */
@@ -3417,7 +3416,6 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
 #if USE_LIBFFI_RAW_API
   callback->offsets = (ptrdiff_t *)(callback->cmdv+cmdc+cif->argc);
   callback->use_raw_api = cif_raw_supported(cif);
-  callback->use_raw_api = 0;
   if (callback->use_raw_api &&
       ffi_prep_raw_closure_loc((ffi_raw_closure *)closure->lib_closure, &callback->cif->lib_cif,
 				 (void (*)(ffi_cif*,void*,ffi_raw*,void*))callback_callback,
