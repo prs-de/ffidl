@@ -1646,20 +1646,40 @@ typedef struct ffidl_protocolmap ffidl_protocolmap;
 static const ffidl_protocolmap protocolmap[] = {
   {"", FFI_DEFAULT_ABI},
   {"default", FFI_DEFAULT_ABI},
-#  if defined(X86_WIN64)
-  {"win64", FFI_WIN64},
-#  else	 /* X86_WIN64 */
+#if defined(HAVE_FFI_EFI64)
+  {"efi64", FFI_EFI64},
+#endif
+#if defined(HAVE_FFI_FASTCALL)
+  {"fastcall", FFI_FASTCALL},
+#endif
+#if defined(HAVE_FFI_GNUW64)
+  {"gnuw64", FFI_GNUW64},
+#endif
+#if defined(HAVE_FFI_MS_CDECL)
+  {"mscdecl", FFI_MS_CDECL},
+#endif
+#if defined(HAVE_FFI_PASCAL)
+  {"pascal", FFI_PASCAL},
+#endif
+#if defined(HAVE_FFI_REGISTER)
+  {"register", FFI_REGISTER},
+#endif
+#if defined(HAVE_FFI_STDCALL)
+  {"stdcall", FFI_STDCALL},
+#endif
+#if defined(HAVE_FFI_SYSV)
   {"cdecl", FFI_SYSV},
   {"sysv", FFI_SYSV},
-  {"stdcall", FFI_STDCALL},
+#endif
+#if defined(HAVE_FFI_THISCALL)
   {"thiscall", FFI_THISCALL},
-  {"fastcall", FFI_FASTCALL},
-#    if defined(X86_WIN32)
-  {"mscdecl", FFI_MS_CDECL},
-#    elif defined(X86_64)	/* X86_WIN32 */
+#endif
+#if defined(HAVE_FFI_UNIX64)
   {"unix64", FFI_UNIX64},
-#    endif  /* X86_64 */
-#  endif    /* X86_WIN64 */
+#endif
+#if defined(HAVE_FFI_WIN64)
+  {"win64", FFI_WIN64},
+#endif
   {NULL,}
 };
 

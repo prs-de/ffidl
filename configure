@@ -2136,6 +2136,52 @@ $as_echo "$ac_res" >&6; }
   eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
 
 } # ac_fn_c_check_type
+
+# ac_fn_c_check_decl LINENO SYMBOL VAR INCLUDES
+# ---------------------------------------------
+# Tests whether SYMBOL is declared in INCLUDES, setting cache variable VAR
+# accordingly.
+ac_fn_c_check_decl ()
+{
+  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
+  as_decl_name=`echo $2|sed 's/ *(.*//'`
+  as_decl_use=`echo $2|sed -e 's/(/((/' -e 's/)/) 0&/' -e 's/,/) 0& (/g'`
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether $as_decl_name is declared" >&5
+$as_echo_n "checking whether $as_decl_name is declared... " >&6; }
+if eval \${$3+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+$4
+int
+main ()
+{
+#ifndef $as_decl_name
+#ifdef __cplusplus
+  (void) $as_decl_use;
+#else
+  (void) $as_decl_name;
+#endif
+#endif
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  eval "$3=yes"
+else
+  eval "$3=no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+eval ac_res=\$$3
+	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+$as_echo "$ac_res" >&6; }
+  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
+
+} # ac_fn_c_check_decl
 cat >config.log <<_ACEOF
 This file contains any messages produced by compilers while
 running configure, to aid debugging if configure makes a mistake.
@@ -10294,6 +10340,106 @@ fi
 	PKG_LIBS="$PKG_LIBS $i"
     done
 
+
+fi
+
+if test "x$with_libffi" = xyes; then :
+
+    OLD_CFLAGS="$CFLAGS"
+    CFLAGS="$CFLAGS $LIBFFI_CFLAGS"
+
+
+
+    ac_fn_c_check_decl "$LINENO" "FFI_EFI64" "ac_cv_have_decl_FFI_EFI64" "#include <ffi.h>
+"
+if test "x$ac_cv_have_decl_FFI_EFI64" = xyes; then :
+
+$as_echo "#define HAVE_FFI_EFI64 /**/" >>confdefs.h
+
+fi
+
+    ac_fn_c_check_decl "$LINENO" "FFI_FASTCALL" "ac_cv_have_decl_FFI_FASTCALL" "#include <ffi.h>
+"
+if test "x$ac_cv_have_decl_FFI_FASTCALL" = xyes; then :
+
+$as_echo "#define HAVE_FFI_FASTCALL /**/" >>confdefs.h
+
+fi
+
+    ac_fn_c_check_decl "$LINENO" "FFI_GNUW64" "ac_cv_have_decl_FFI_GNUW64" "#include <ffi.h>
+"
+if test "x$ac_cv_have_decl_FFI_GNUW64" = xyes; then :
+
+$as_echo "#define HAVE_FFI_GNUW64 /**/" >>confdefs.h
+
+fi
+
+    ac_fn_c_check_decl "$LINENO" "FFI_MS_CDECL" "ac_cv_have_decl_FFI_MS_CDECL" "#include <ffi.h>
+"
+if test "x$ac_cv_have_decl_FFI_MS_CDECL" = xyes; then :
+
+$as_echo "#define HAVE_FFI_MS_CDECL /**/" >>confdefs.h
+
+fi
+
+    ac_fn_c_check_decl "$LINENO" "FFI_PASCAL" "ac_cv_have_decl_FFI_PASCAL" "#include <ffi.h>
+"
+if test "x$ac_cv_have_decl_FFI_PASCAL" = xyes; then :
+
+$as_echo "#define HAVE_FFI_PASCAL /**/" >>confdefs.h
+
+fi
+
+    ac_fn_c_check_decl "$LINENO" "FFI_REGISTER" "ac_cv_have_decl_FFI_REGISTER" "#include <ffi.h>
+"
+if test "x$ac_cv_have_decl_FFI_REGISTER" = xyes; then :
+
+$as_echo "#define HAVE_FFI_REGISTER /**/" >>confdefs.h
+
+fi
+
+    ac_fn_c_check_decl "$LINENO" "FFI_STDCALL" "ac_cv_have_decl_FFI_STDCALL" "#include <ffi.h>
+"
+if test "x$ac_cv_have_decl_FFI_STDCALL" = xyes; then :
+
+$as_echo "#define HAVE_FFI_STDCALL /**/" >>confdefs.h
+
+fi
+
+    ac_fn_c_check_decl "$LINENO" "FFI_SYSV" "ac_cv_have_decl_FFI_SYSV" "#include <ffi.h>
+"
+if test "x$ac_cv_have_decl_FFI_SYSV" = xyes; then :
+
+$as_echo "#define HAVE_FFI_SYSV /**/" >>confdefs.h
+
+fi
+
+    ac_fn_c_check_decl "$LINENO" "FFI_THISCALL" "ac_cv_have_decl_FFI_THISCALL" "#include <ffi.h>
+"
+if test "x$ac_cv_have_decl_FFI_THISCALL" = xyes; then :
+
+$as_echo "#define HAVE_FFI_THISCALL /**/" >>confdefs.h
+
+fi
+
+    ac_fn_c_check_decl "$LINENO" "FFI_UNIX64" "ac_cv_have_decl_FFI_UNIX64" "#include <ffi.h>
+"
+if test "x$ac_cv_have_decl_FFI_UNIX64" = xyes; then :
+
+$as_echo "#define HAVE_FFI_UNIX64 /**/" >>confdefs.h
+
+fi
+
+    ac_fn_c_check_decl "$LINENO" "FFI_WIN64" "ac_cv_have_decl_FFI_WIN64" "#include <ffi.h>
+"
+if test "x$ac_cv_have_decl_FFI_WIN64" = xyes; then :
+
+$as_echo "#define HAVE_FFI_WIN64 /**/" >>confdefs.h
+
+fi
+
+
+    CFLAGS="$OLD_CFLAGS"
 
 fi
 

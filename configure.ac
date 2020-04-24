@@ -301,6 +301,32 @@ AS_VAR_IF([with_libffcall], [yes],
      TEA_ADD_INCLUDES([$LIBFFCALL_CFLAGS])
      TEA_ADD_LIBS([$LIBFFCALL_LIBS])])
 
+dnl Check FFI ABI support.
+AS_VAR_IF([with_libffi], [yes], [
+    OLD_CFLAGS="$CFLAGS"
+    CFLAGS="$CFLAGS $LIBFFI_CFLAGS"
+
+    AC_DEFUN([FFIDL_CHECK_FFI_ABI],
+	[AC_CHECK_DECL([$1],
+	[AC_DEFINE([HAVE_$1], [],
+		    [libffi supports $1 on this platform.])],
+	[], [[#include <ffi.h>]])])
+
+    FFIDL_CHECK_FFI_ABI([FFI_EFI64])
+    FFIDL_CHECK_FFI_ABI([FFI_FASTCALL])
+    FFIDL_CHECK_FFI_ABI([FFI_GNUW64])
+    FFIDL_CHECK_FFI_ABI([FFI_MS_CDECL])
+    FFIDL_CHECK_FFI_ABI([FFI_PASCAL])
+    FFIDL_CHECK_FFI_ABI([FFI_REGISTER])
+    FFIDL_CHECK_FFI_ABI([FFI_STDCALL])
+    FFIDL_CHECK_FFI_ABI([FFI_SYSV])
+    FFIDL_CHECK_FFI_ABI([FFI_THISCALL])
+    FFIDL_CHECK_FFI_ABI([FFI_UNIX64])
+    FFIDL_CHECK_FFI_ABI([FFI_WIN64])
+
+    CFLAGS="$OLD_CFLAGS"
+])
+
 #--------------------------------------------------------------------
 # Set the default compiler switches based on the --enable-symbols option.
 #--------------------------------------------------------------------

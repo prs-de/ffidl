@@ -42,6 +42,39 @@
 /* Defined when compiler supports casting to union type. */
 #undef HAVE_CAST_TO_UNION
 
+/* libffi supports FFI_EFI64 on this platform. */
+#undef HAVE_FFI_EFI64
+
+/* libffi supports FFI_FASTCALL on this platform. */
+#undef HAVE_FFI_FASTCALL
+
+/* libffi supports FFI_GNUW64 on this platform. */
+#undef HAVE_FFI_GNUW64
+
+/* libffi supports FFI_MS_CDECL on this platform. */
+#undef HAVE_FFI_MS_CDECL
+
+/* libffi supports FFI_PASCAL on this platform. */
+#undef HAVE_FFI_PASCAL
+
+/* libffi supports FFI_REGISTER on this platform. */
+#undef HAVE_FFI_REGISTER
+
+/* libffi supports FFI_STDCALL on this platform. */
+#undef HAVE_FFI_STDCALL
+
+/* libffi supports FFI_SYSV on this platform. */
+#undef HAVE_FFI_SYSV
+
+/* libffi supports FFI_THISCALL on this platform. */
+#undef HAVE_FFI_THISCALL
+
+/* libffi supports FFI_UNIX64 on this platform. */
+#undef HAVE_FFI_UNIX64
+
+/* libffi supports FFI_WIN64 on this platform. */
+#undef HAVE_FFI_WIN64
+
 /* Compiler support for module scope symbols */
 #undef HAVE_HIDDEN
 
