@@ -405,6 +405,7 @@ typedef struct ffidl_load_flags ffidl_load_flags;
  */
 
 EXTERN void *ffidl_pointer_pun (void *p);
+EXTERN void *ffidl_copy_bytes (void *dst, void *src, size_t len);
 EXTERN int   Ffidl_Init (Tcl_Interp * interp);
 
 /*****************************************
@@ -3769,6 +3770,9 @@ static int tcl_ffidl_stubsymbol(ClientData clientData, Tcl_Interp *interp, int o
  * One function exported for pointer punning with ffidl::callout.
  */
 void *ffidl_pointer_pun(void *p) { return p; }
+void *ffidl_copy_bytes(void *dst, void *src, size_t len) {
+  return memmove(dst, src, len);
+}
 
 /*
  *--------------------------------------------------------------
