@@ -667,6 +667,7 @@ build
 FFIDL_TEST
 TCL_TOP_DIR_NATIVE
 TCL_INCLUDES
+FFIDLRT_VERSION
 PKG_OBJECTS
 PKG_SOURCES
 MATH_LIBS
@@ -5805,6 +5806,8 @@ done
 
 $as_echo "#define LOOKUP_TK_STUBS 1" >>confdefs.h
 
+FFIDLRT_VERSION=0.4
+
 
 #--------------------------------------------------------------------
 # __CHANGE__
@@ -10675,7 +10678,7 @@ $as_echo "${TCLSH_PROG}" >&6; }
 # which require substituting th AC variables in.  Include these here.
 #--------------------------------------------------------------------
 
-ac_config_files="$ac_config_files GNUmakefile"
+ac_config_files="$ac_config_files GNUmakefile pkgIndex.tcl"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -11378,6 +11381,7 @@ do
   case $ac_config_target in
     "ffidlConfig.h") CONFIG_HEADERS="$CONFIG_HEADERS ffidlConfig.h" ;;
     "GNUmakefile") CONFIG_FILES="$CONFIG_FILES GNUmakefile" ;;
+    "pkgIndex.tcl") CONFIG_FILES="$CONFIG_FILES pkgIndex.tcl" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

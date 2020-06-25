@@ -3,6 +3,8 @@
 #
 # Run time support for Ffidl.
 #
+# NOTE: Remember to update FFIDLRT_VERSION in configure.ac when changing this
+#       version number.
 package provide Ffidlrt 0.4
 package require Ffidl
 

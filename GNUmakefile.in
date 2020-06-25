@@ -285,23 +285,11 @@ VPATH = $(srcdir):$(srcdir)/generic:$(srcdir)/unix:$(srcdir)/win:$(TCL_SRC_DIR)/
 
 #========================================================================
 # Create the pkgIndex.tcl file.
-# It is usually easiest to let Tcl do this for you with pkg_mkIndex, but
-# you may find that you need to customize the package.  If so, either
-# modify the -hand version, or create a pkgIndex.tcl.in file and have
-# the configure script output the pkgIndex.tcl by editing configure.in.
 #========================================================================
 
-pkgIndex.tcl: $(PKG_LIB_FILE)
-	@cd $(srcdir) && cp -p $(PKG_TCL_SOURCES) $(CURDIR)
-	( echo pkg_mkIndex . $(PKG_LIB_FILE) \
-	    [foreach f [list $(PKG_TCL_SOURCES)] \
-	    {lappend l [file tail \$$f]}\; set l]\; exit; ) | $(TCLSH)
-	@for f in $(PKG_TCL_SOURCES); do rm -f `basename "$$f"`; done
-
-pkgIndex.tcl-hand:
-	(echo 'package ifneeded $(PACKAGE_NAME) $(PACKAGE_VERSION) \
-	    [list load [file join $$dir $(PKG_LIB_FILE)]]'\
-	) > pkgIndex.tcl
+pkgIndex.tcl: $(srcdir)/pkgIndex.tcl.in  $(top_builddir)/config.status
+	cd $(top_builddir) \
+	  && CONFIG_FILES=$@ CONFIG_HEADERS= $(SHELL) ./config.status
 
 #========================================================================
 # Distribution creation

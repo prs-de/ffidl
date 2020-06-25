@@ -95,6 +95,7 @@ TEA_ADD_STUB_SOURCES([])
 TEA_ADD_TCL_SOURCES([library/ffidlrt.tcl])
 AC_DEFINE(LOOKUP_TK_STUBS, 1, 
     [ffidl::stubsymbol can lookup in Tk stubs tables])
+AC_SUBST([FFIDLRT_VERSION], [0.4])
 
 #--------------------------------------------------------------------
 # __CHANGE__
@@ -369,4 +370,4 @@ TEA_PROG_TCLSH
 # which require substituting th AC variables in.  Include these here.
 #--------------------------------------------------------------------
 
-AC_OUTPUT([GNUmakefile])
+AC_OUTPUT([GNUmakefile pkgIndex.tcl])
