@@ -129,7 +129,7 @@ TCL_LIBS	= @TCL_LIBS@
 
 EXTRA_PATH	= $(top_builddir):$(TCL_BIN_DIR)
 TCLLIBPATH      = $(top_builddir) `@CYGPATH@ $(srcdir)/demos`
-TCLSH_ENV	= TCL_LIBRARY=`@CYGPATH@ $(TCL_SRC_DIR)/library` \
+TCLSH_ENV	= TCL_LIBRARY=`@CYGPATH@ $(TCL_SRC_DIR)/library:$(TCL_LIBRARY)` \
 		  @LD_LIBRARY_PATH_VAR@="$(EXTRA_PATH):$(@LD_LIBRARY_PATH_VAR@)" \
 		  PATH="$(EXTRA_PATH):$(PATH)" \
 		  TCLLIBPATH="$(TCLLIBPATH)"
