@@ -303,43 +303,46 @@ DIST_DIR	= $(DIST_ROOT)/$(PKG_DIR)
 dist-clean:
 	rm -rf $(DIST_DIR) $(DIST_ROOT)/$(PKG_DIR).tar.*
 
+DIST_TOP_FILES = $(addprefix $(srcdir)/,\
+	GNUmakefile.in README.txt aclocal.m4 configure configure.ac ffidlConfig.h.in \
+	license.terms pkgIndex.tcl.in)
+
+DIST_TEST_FILES = $(addprefix $(srcdir)/tests/,\
+	all.tcl basic.test callbacks.test interp.test libm.test qsort.test \
+	tkphoto.test)
+
+DIST_DEMO_FILES = $(addprefix $(srcdir)/demos/,\
+	atol.tcl getrusage.tcl libm.tcl pkgIndex.tcl qsort.tcl tkphoto.tcl)
+DIST_DEMO_MATHSWIG_FILES = $(addprefix $(srcdir)/demos/mathswig/,\
+	mathswig.i mathswig_wrap.c time-libm.tcl)
+DIST_DEMO_OTHER_FILES = $(addprefix $(srcdir)/demos/other/,\
+	gdbm.tcl gmpf.tcl gmpq.tcl gmp.tcl gmpz.tcl pkgIndex.tcl test-gdbm-1.tcl \
+	test-gdbm-2.tcl test-gmpq.tcl test-gmpz.tcl)
+
+DIST_DOC_FILES = $(addprefix $(srcdir)/doc/,ffidl.html styles.css)
+
+DIST_SRC_FILES = $(addprefix $(srcdir)/generic/,ffidl.c ffidl_test.c)
+DIST_TCL_FILES = $(addprefix $(srcdir)/library/,ffidlrt.tcl)
+DIST_TCLCONFIG_FILES = $(addprefix $(srcdir)/tclconfig/,\
+	ChangeLog README.txt config.guess config.sub install-sh pkg.m4 tcl.m4)
+
 dist: dist-clean
 	mkdir -p $(DIST_DIR)
-	list='demos demos/mathswig demos/other doc generic library tests'; \
+	list='demos demos/mathswig demos/other doc generic library tclconfig tests'; \
 	for p in $$list; do \
 	    if test -d $(srcdir)/$$p ; then \
 		mkdir $(DIST_DIR)/$$p; \
 	    fi; \
 	done
-	cp -p \
-	    $(srcdir)/README* \
-	    $(srcdir)/license* \
-	    $(srcdir)/aclocal.m4 \
-	    $(srcdir)/configure \
-	    $(srcdir)/configure.ac \
-	    $(srcdir)/*.in \
-	    $(DIST_DIR)/
-	cp -p $(srcdir)/demos/*.tcl $(DIST_DIR)/demos/
-	cp -p $(srcdir)/demos/mathswig/*.i \
-	    $(srcdir)/demos/mathswig/*.c \
-	    $(srcdir)/demos/mathswig/*.tcl \
-	    $(DIST_DIR)/demos/mathswig/
-	cp -p \
-	    $(srcdir)/demos/other/*.tcl \
-	    $(DIST_DIR)/demos/other/
-	cp -p \
-	    $(srcdir)/doc/*.html $(srcdir)/doc/*.css \
-	    $(DIST_DIR)/doc/
-	cp -p \
-	    $(srcdir)/generic/*.c \
-	    $(DIST_DIR)/generic/
-	cp -p \
-	    $(srcdir)/library/*.tcl \
-	    $(DIST_DIR)/library/
-	cp -p \
-	    $(srcdir)/tests/*.tcl \
-	    $(srcdir)/tests/*.test \
-	    $(DIST_DIR)/tests/
+	cp -p $(DIST_TOP_FILES) $(DIST_DIR)/
+	cp -p $(DIST_DEMO_FILES) $(DIST_DIR)/demos/
+	cp -p $(DIST_DEMO_MATHSWIG_FILES) $(DIST_DIR)/demos/mathswig/
+	cp -p $(DIST_DEMO_OTHER_FILES) $(DIST_DIR)/demos/other/
+	cp -p $(DIST_DOC_FILES) $(DIST_DIR)/doc/
+	cp -p $(DIST_SRC_FILES) $(DIST_DIR)/generic/
+	cp -p $(DIST_TCL_FILES) $(DIST_DIR)/library/
+	cp -p $(DIST_TEST_FILES) $(DIST_DIR)/tests/
+	cp -p $(DIST_TCLCONFIG_FILES) $(DIST_DIR)/tclconfig/
 	chmod 664 $(DIST_DIR)/GNUmakefile.in $(DIST_DIR)/aclocal.m4
 	chmod 664 $(DIST_DIR)/demos/*.tcl $(DIST_DIR)/demos/*/*
 	chmod 664 $(DIST_DIR)/doc/*
@@ -347,19 +350,8 @@ dist: dist-clean
 	chmod 664 $(DIST_DIR)/library/*.tcl
 	chmod 664 $(DIST_DIR)/tests/*
 	chmod 775 $(DIST_DIR)/configure $(DIST_DIR)/configure.ac
-
-	mkdir $(DIST_DIR)/tclconfig
-	cp \
-		$(srcdir)/tclconfig/ChangeLog \
-		$(srcdir)/tclconfig/README.txt \
-		$(srcdir)/tclconfig/config.guess \
-		$(srcdir)/tclconfig/config.sub \
-		$(srcdir)/tclconfig/install-sh \
-		$(srcdir)/tclconfig/pkg.m4 \
-		$(srcdir)/tclconfig/tcl.m4 \
-		$(DIST_DIR)/tclconfig/
 	chmod 664 $(DIST_DIR)/tclconfig/tcl.m4
-	chmod +x $(DIST_DIR)/tclconfig/install-sh
+	chmod 775 $(DIST_DIR)/tclconfig/install-sh
 
 	(cd $(DIST_ROOT); $(COMPRESS);)
 
