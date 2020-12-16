@@ -1,0 +1,83 @@
+#------------------------------------------------------------- -*- makefile -*-
+#
+# Makefile for tcludp
+#
+# Basic build, test and install
+#   nmake /f makefile.vc INSTALLDIR=c:\tcl
+#   nmake /f makefile.vc INSTALLDIR=c:\tcl test
+#   nmake /f makefile.vc INSTALLDIR=c:\tcl install
+#
+# For other build options (debug, static etc.),
+# See TIP 477 (https://core.tcl.tk/tips/doc/trunk/tip/477.md) for
+# detailed documentation.
+# 
+# See the file "license.terms" for information on usage and redistribution
+# of this file, and for a DISCLAIMER OF ALL WARRANTIES.
+#
+
+PROJECT = Ffidl
+NEED_TCL_SOURCE = 1
+#MULTIPLATFORM_INSTALL = 1
+
+!include "rules-ext.vc"
+
+# Note: ffidl_test adds another 16K or so to the binary and is only
+# used for test scripts so normally we leave it out. Define TESTBUILD=1
+# on command line to enable it.
+PRJ_OBJS = \
+	$(TMP_DIR)\ffidl.obj
+!ifndef TESTBUILD
+TESTBUILD = 0
+!endif
+!if $(TESTBUILD)
+PRJ_OBJS = $(PRJ_OBJS) $(TMP_DIR)\ffidl_test.obj
+!endif
+
+# It is expected that the include and lib directories are at
+# $(LIBFFIDIR)/$(ARCH)/{include,lib} or $(LIBFFIDIR)/{include,lib}
+# If LIBFFIDIR is defined or passed on the command line, use it.
+# Otherwise try to locate it in the following locations:
+# .., ../.., ../../.. using presence of libffi.lib as the key.
+!ifndef LIBFFIDIR
+
+!if [echo LIBFFIPARENT = \> nmakehlp.out] \
+    || [nmakehlp -L libffi\$(ARCH)\lib\libffi.lib >> nmakehlp.out]
+# Not found, try without ARCH
+!if [echo LIBFFIPARENT = \> nmakehlp.out] \
+    || [nmakehlp -L libffi\lib\libffi.lib >> nmakehlp.out]
+!message Automatic search for libffi failed.
+!message Please pass location of libffi as LIBFFIDIR=<path> from the command
+!message line or the environment.
+!error Could not locate libffi.
+!else
+!include nmakehlp.out
+LIBFFIDIR = $(LIBFFIPARENT)\libffi
+!endif
+
+!else
+
+!include nmakehlp.out
+LIBFFIDIR=$(LIBFFIPARENT)\libffi\$(ARCH)
+
+!endif
+!endif
+
+PRJ_DEFINES = -D_CRT_SECURE_NO_WARNINGS -DUSE_LIBFFI=1 -DUSE_LIBFFI_RAW_API=0 -sdl
+PRJ_INCLUDES = $(PRJ_INCLUDES) -I"$(LIBFFIDIR)\include"
+PRJ_LIBS = $(PRJ_LIBS) "$(LIBFFIDIR)\lib\libffi.lib"
+
+!include "$(_RULESDIR)\targets.vc"
+
+install: default-install-docs-html
+
+!if [echo FFIDLRTVER = \> nmakehlp.out] \
+    || [nmakehlp -V "$(LIBDIR)\ffidlrt.tcl" "package provide" >> nmakehlp.out]
+!error "Could not determine ffidlrt.tcl version."
+!endif
+!include nmakehlp.out
+pkgindex: default-pkgindex
+	@$(TCLSH) << >>$(OUT_DIR)\pkgIndex.tcl
+puts {package ifneeded Ffidlrt $(FFIDLRTVER) [list source [file join $$dir ffidlrt.tcl]]}
+<<
+
+
