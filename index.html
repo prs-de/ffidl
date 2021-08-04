@@ -69,7 +69,7 @@
           function from Tcl code:
         </p>
         <pre><code>% package require Ffidl
-0.8b0
+0.9b0
 % ffidl::callout cputs {pointer-utf8} int [ffidl::symbol libc.so.6 puts]
 % cputs "Hello libc!"
 Hello libc!
@@ -77,7 +77,7 @@ Hello libc!
         <p>
           Ffidl can use the
           latest <a href="https://sourceware.org/libffi">libffi</a> (version
-          3.2.1 at the time of this writing) to dynamically construct calls to C
+          3.3 at the time of this writing) to dynamically construct calls to C
           functions from Tcl, to dynamically construct calls from C functions
           into Tcl. Libffi runs on many platforms, see Supported Platforms
           section on <a href="https://sourceware.org/libffi">libffi</a>'s
@@ -91,15 +91,16 @@ Hello libc!
           to work.
         </p>
         <p>
-          Ffidl uses Tcl's <b>Tcl_LoadFile()</b> and <b>Tcl_FindSymbol()</b>, to
-          load dynamic libraries and discover the locations of functions.
+          Ffidl uses Tcl's <code>Tcl_LoadFile</code>
+          and <code>Tcl_FindSymbol</code>, to load dynamic libraries and
+          discover the locations of functions.
         </p>
         <p>
           Ffidl should be able to run on any system with a stubs enabled Tcl,
           libffi or libffcall support, and a libdl implementation.
         </p>
         <p>
-          Ffidl 0.8b0 is an alpha release. There are configuration details
+          Ffidl 0.9b0 is an alpha release. There are configuration details
           which you will need to attend to by hand in the current release.
           The initial development turned up a few bugs in libffi under
           linux-x86, so users on other architectures should be alert for
@@ -113,11 +114,44 @@ Hello libc!
           design issues could use some discussion.
         </p>
       </section>
+      <section class="warning">
+        <h2 id="warning">API Compatibility Warning</h2>
+        <p>
+          The Ffidl API is subject to change in incompatible ways.  In
+          particular, it might be changed to improve support for declaring and
+          accessing structs, enums, pointers and byte buffers, and to integrate
+          better with Tcl's API.
+        </p>
+        <p>
+          Always check the <a href="#changelog">Changelog</a> before updating.
+        </p>
+      </section>
       <section>
         <h2 id="changelog">Changelog</h2>
-        <h3>Ffidl 0.8b0 (pre-release)</h3>
+        <h3>Ffidl 0.9b0</h3>
         <p>
-          Ffidl 0.8b0 has the following changes:
+          Ffidl 0.9b0 has the following changes:
+        </p>
+        <ul>
+          <li><i>Feat</i> add NMake-based build system</li>
+	</ul>
+        <p>
+          The changes in Ffidl 0.9b0 were implemented by:
+	  <ul>
+            <li>
+              <a href="mailto:apnmbx-wits@yahoo.com">Ashok P. Nadkarni</a>
+            </li>
+            <li>
+              <a href="mailto:adrian@medranocalvo.com">Adrián Medraño Calvo</a>
+              for <a href="https://www.prs.de">Patzschke + Rasp Software GmbH</a>
+            </li>
+          </ul>
+          and are under BSD License; do not contact the original Ffidl author
+          for support about them.
+        </p>
+        <h3>Ffidl 0.8</h3>
+        <p>
+          Ffidl 0.8 has the following changes:
         </p>
         <ul>
           <li><i>Feat</i> support for LLP64 (Windows 64bit)</li>
@@ -128,6 +162,7 @@ Hello libc!
           value of <code>NULL</code> pointers for the architecture</li>
           <li><i>Feat</i> support specifying library binding time and symbol
           visibility</li>
+          <li><i>Feat</i> documentation improvements</li>
           <li><i>Fix</i> check protocol name on non-Windows platforms</li>
           <li><i>Fix</i> misuse of libffi's return value API</li>
           <li><i>Fix</i> double-free upon deleting interpreter</li>
@@ -138,9 +173,10 @@ Hello libc!
           <li><i>Fix</i> disable <code>long double</code> support if longer
           than <code>double</code></li>
           <li><i>Fix</i> building with MinGW</li>
+          <li><i>Fix</i> <b>Ffidlrt</b> no longer requires libc</li>
         </ul>
         <p>
-          The changes in 0.8b0 were implemented
+          The changes in 0.8 were implemented
           by <a href="mailto:adrian@medranocalvo.com">Adrián Medraño Calvo</a>
           for <a href="https://www.prs.de">Patzschke + Rasp Software GmbH</a>,
           and are under BSD License; do not contact the original Ffidl author
@@ -254,17 +290,22 @@ Hello libc!
             <i>?protocol?</i>
           </dt>
           <dd>
-            <b>::ffidl::callout</b> defines a Tcl command with the
-            specified <i>name</i> which, when invoked, converts its
-            arguments according to the <i>arg_types</i> specified, calls
-            the function at the specified <i>address</i>, and converts the
-            specified <i>return_type</i> into a Tcl result. The allowed
-            <a href="#types">types</a> are described below.
+            <p>
+              <b>::ffidl::callout</b> defines a Tcl command with the
+              specified <i>name</i> which, when invoked, converts its
+              arguments according to the <i>arg_types</i> specified, calls
+              the function at the specified <i>address</i>, and converts the
+              specified <i>return_type</i> into a Tcl result. The allowed
+              <a href="#types">types</a> are described below.
+            </p>
             <p>
               The <i>protocol</i> specifies a calling convention to be
-              used. The only platform which supports <i>protocols</i> is
-              Windows where <i>protocol</i> may be <b>cdecl</b>, which is
-              the default, or <b>stdcall</b>.
+              used. Depending on the platform, any of the following values can
+              be used: <code>default</code>, <code>efi64</code>, <code>fastcall</code>,
+              <code>gnuw64</code>, <code>mscdecl</code>, <code>pascal</code>,
+              <code>register</code>, <code>stdcall</code>, <code>cdecl</code>,
+              <code>sysv</code>, <code>thiscall</code>, <code>unix64</code> or
+              <code>win64</code>.
             </p>
           </dd>
           <dt id="::ffidl::callback">
@@ -276,20 +317,23 @@ Hello libc!
             <i>?cmdprefix?</i>
           </dt>
           <dd>
-            <b>::ffidl::callback</b> declares that a Tcl proc with the
-            specified <i>name</i> will be invoked as a callback from C
-            code. When invoked the arguments will be converted to Tcl
-            values according to the <i>arg_types</i> specified, passed to
-            <i>name</i>, the return value from <i>name</i> will be
-            converted back into the specified <i>return_type</i>, and the
-            value will be returned to the caller. The allowed
-            <a href="#types">types</a> are described below.  Returns a
-            function pointer to the created callback.
+            <p>
+              <b>::ffidl::callback</b> declares that a Tcl proc with the
+              specified <i>name</i> will be invoked as a callback from C
+              code. When invoked the arguments will be converted to Tcl
+              values according to the <i>arg_types</i> specified, passed to
+              <i>name</i>, the return value from <i>name</i> will be
+              converted back into the specified <i>return_type</i>, and the
+              value will be returned to the caller. The allowed
+              <a href="#types">types</a> are described below.
+            </p>
+            <p>
+              Returns a function pointer to the created callback.
+            </p>
             <p>
               The <i>protocol</i> specifies a calling convention to be
-              used. The only platform which supports <i>protocols</i> is
-              Windows where <i>protocol</i> may be <b>cdecl</b>, which is
-              the default, or <b>stdcall</b>.
+              used.  For supported values, please
+              see <a href="#ffidl::callout">ffidl::callout</a>.
             </p>
             <p>
             The <i>cmdprefix</i> specifies a command prefix to be invoked
@@ -305,12 +349,14 @@ Hello libc!
             <i>library</i>
           </dt>
           <dd>
-            <b>::ffidl::library</b> load a dynamically linked library of name <i>library</i>.
-            The option <i>-binding</i> determines whether the symbols bound on use or immediately.
-            The option <i>-visibility</i> determines whether the bound symbols are available to further loaded libraries.
-            Note that this options are not supported under all Ffidl
-            configurations.  When they are not specified, the platform's default
-            for the Ffidl configuration is used.
+            <p>
+              <b>::ffidl::library</b> load a dynamically linked library of name <i>library</i>.
+              The option <i>-binding</i> determines whether the symbols bound on use or immediately.
+              The option <i>-visibility</i> determines whether the bound symbols are available to further loaded libraries.
+              Note that this options are not supported under all Ffidl
+              configurations.  When they are not specified, the platform's default
+              for the Ffidl configuration is used.
+            </p>
           </dd>
           <dt id="::ffidl::symbol">
             <b>::ffidl::symbol</b>
@@ -318,11 +364,13 @@ Hello libc!
             <i>symbol</i>
           </dt>
           <dd>
-            <b>::ffidl::symbol</b> loads, if necessary, a dynamically
-            linked library of name <i>library</i> and fetches the loaded
-            address of <i>symbol</i> from the library. The kinds of
-            <i>symbols</i> available vary with the implementation of
-            dynamic loading.
+            <p>
+              <b>::ffidl::symbol</b> loads, if necessary, a dynamically
+              linked library of name <i>library</i> and fetches the loaded
+              address of <i>symbol</i> from the library. The kinds of
+              <i>symbols</i> available vary with the implementation of
+              dynamic loading.
+            </p>
           </dd>
           <dt id="::ffidl::stubsymbol">
             <b>::ffidl::stubsymbol</b>
@@ -331,14 +379,16 @@ Hello libc!
             <i>symbolnumber</i>
           </dt>
           <dd>
-            <b>::ffidl::stubsymbol</b> returns the address of the symbol
-            indexed by <i>symbolnumber</i> in the <i>library</i>'s stubs
-            table <i>stubstable</i>.
             <p>
-              <i>library</i> can be one of <b>tcl</b> or <b>tk</b> and
-              <i>stubstable</i> can be one of <b>stubs</b>,
-              <b>intStubs</b>, <b>platStubs</b>, <b>intPlatStubs</b> or
-              <b>intXLibStubs</b>.
+              <b>::ffidl::stubsymbol</b> returns the address of the symbol
+              indexed by <i>symbolnumber</i> in the <i>library</i>'s stubs
+              table <i>stubstable</i>.
+            </p>
+            <p>
+              <i>library</i> can be one of <code>tcl</code> or <code>tk</code> and
+              <i>stubstable</i> can be one of <code>stubs</code>,
+              <code>intStubs</code>, <code>platStubs</code>, <code>intPlatStubs</code> or
+              <code>intXLibStubs</code>.
             </p>
           </dd>
           <dt id="::ffidl::typedef">
@@ -347,14 +397,17 @@ Hello libc!
             <i>type1 ?...?</i>
           </dt>
           <dd>
-            <b>::ffidl::typedef</b> defines a new Ffidl type name. This may
-            be either a simple alias for an existing type, or a list of
-            types which form a structured aggregate. To pass a structure by
-            value or return a structure by value, you must make a
-            <b>::ffidl::typedef</b> for it. But even if you only pass or
-            receive structures by reference, you might want to define a
-            structure in order to use the <b>format</b>, <b>sizeof</b>, and
-            <b>alignof</b> options of <b>::ffidl::info</b> on it.
+            <p>
+              <b>::ffidl::typedef</b> defines a new Ffidl type name. This may
+              be either a simple alias for an existing type, or a list of
+              types which form a structured aggregate. To pass a structure by
+              value or return a structure by value, you must make a
+              <b>::ffidl::typedef</b> for it. But even if you only pass or
+              receive structures by reference, you might want to define a
+              structure in order to use the <b>format</b>, <b>sizeof</b>, and
+              <b>alignof</b> options of <a href="#::ffidl::info">::ffidl::info</a>
+              on it.
+            </p>
           </dd>
           <dt id="::ffidl::info">
             <b>::ffidl::info</b>
@@ -362,8 +415,10 @@ Hello libc!
             <i>?...?</i>
           </dt>
           <dd>
-            <b>::ffidl::info</b> implements a variety of information
-            functions.
+            <p>
+              <b>::ffidl::info</b> implements a variety of information
+              functions.
+            </p>
             <dl>
               <dt>
                 <b>::ffidl::info alignof</b> <i>type</i>
@@ -375,13 +430,13 @@ Hello libc!
                 <b>::ffidl::info callbacks</b>
               </dt>
               <dd>
-                returns a list of <b>::ffidl::callback</b> declared names.
+                returns a list of callbacks defined with <a href="#::ffidl::callback">::ffidl::callback</a>.
               </dd>
               <dt>
                 <b>::ffidl::info callouts</b>
               </dt>
               <dd>
-                returns a list of <b>::ffidl::callout</b> defined names.
+                returns a list of callouts defined with <a href="#::ffidl::callout">::ffidl::callout</a>.
               </dd>
               <dt>
                 <b>::ffidl::info canonical-host</b>
@@ -409,33 +464,34 @@ Hello libc!
                 <b>::ffidl::info have-long-double</b>
               </dt>
               <dd>
-                returns true if the host implements the "long double" type.
+                returns true if the host implements the <code>long double</code> type.
               </dd>
               <dt>
                 <b>::ffidl::info have-long-long</b>
               </dt>
               <dd>
-                returns true if the host implements the "long long" type.
+                returns true if the host implements the <code>long long</code> type.
               </dd>
               <dt>
                 <b>::ffidl::info interp</b>
               </dt>
               <dd>
-                returns the current Tcl_Interp as an integer value.
+                returns the current <code>Tcl_Interp</code> as an integer value.
               </dd>
               <dt>
                 <b>::ffidl::info libraries</b>
               </dt>
               <dd>
                 returns the list of libraries opened by
-                <b>::ffidl::symbol</b>.
+                <a href="#::ffidl::library">::ffidl::library</a> or
+                <a href="#::ffidl::symbol">::ffidl::symbol</a>.
               </dd>
               <dt>
                 <b>::ffidl::info signatures</b>
               </dt>
               <dd>
                 returns the list of function call signatures used by
-                <b>::ffidl::callout</b>.
+                <a href="#::ffidl::callout">::ffidl::callout</a>.
               </dd>
               <dt>
                 <b>::ffidl::info sizeof</b> <i>type</i>
@@ -447,7 +503,8 @@ Hello libc!
                 <b>::ffidl::info typedefs</b>
               </dt>
               <dd>
-                returns a list of <b>::ffidl::typedef</b> defined names.
+                returns a list of types defined
+                with <a href="#::ffidl::typedef">::ffidl::typedef</a>.
               </dd>
               <dt>
                 <b>::ffidl::info use-callbacks</b>
@@ -525,22 +582,29 @@ Hello libc!
           elements (elt).
         </p>
         <p>
-          In addition to the builtin types, the <b>::ffidl::typedef</b>
+          In addition to the builtin types,
+          the <a href="#::ffidl::typedef">::ffidl::typedef</a>
           command may be used to define new types. Aliases for existing
           types may be used where ever the existing type may be used.
           Structured aggregates may be used as arguments, returns, or
           elements of other structures.
         </p>
-        <table>
+        <table id="typetable">
           <tr>
             <th colspan="2">
-              proc
+              <abbr title="Whether the type can be used in a callout.">
+                callout
+              </abbr>
             </th>
             <th colspan="2">
-              callback
+              <abbr title="Whether the type can be used in a callback.">
+                callback
+              </abbr>
             </th>
             <th rowspan="2">
-              elt
+              <abbr title="Whether the type can be used as an element of a struct.">
+                elt
+              </abbr>
             </th>
             <th rowspan="2">
               type
@@ -551,55 +615,63 @@ Hello libc!
           </tr>
           <tr>
             <th>
-              arg
+              <abbr title="Callout's argument type.">
+                arg
+              </abbr>
             </th>
             <th>
-              ret
+              <abbr title="Callout's return type.">
+                ret
+              </abbr>
             </th>
             <th>
-              arg
+              <abbr title="Callback's argument type.">
+                arg
+              </abbr>
             </th>
             <th>
-              ret
+              <abbr title="Callback's return type.">
+                ret
+              </abbr>
             </th>
           </tr>
-          <tr> <td> - </td> <td> + </td> <td> - </td> <td> + </td> <td> - </td> <td> void </td> <td> void </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> char </td> <td> char </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> signed char </td> <td> signed char </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> unsigned char </td> <td> unsigned char </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> int </td> <td> int </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> unsigned </td> <td> unsigned int </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> short </td> <td> signed short int </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> unsigned short </td> <td> unsigned short int </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> long </td> <td> signed long int </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> unsigned long </td> <td> unsigned long int </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> float </td> <td> float </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> double </td> <td> double </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> long long </td> <td> long long </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> unsigned long long </td> <td> unsigned long long </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> long double </td> <td> long double </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> sint8 </td> <td> signed 8 bit int </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> uint8 </td> <td> unsigned 8 bit int </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> sint16 </td> <td> signed 16 bit int </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> uint16 </td> <td> unsigned 16 bit int </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> sint32 </td> <td> signed 32 bit int </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> uint32 </td> <td> unsigned 32 bit int </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> sint64 </td> <td> signed 64 bit int </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> uint64 </td> <td> unsigned 64 bit int </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> pointer </td> <td> pointer as an integer value </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> - </td> <td> pointer-obj </td> <td> pointer from Tcl_Obj </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> - </td> <td> - </td> <td> pointer-utf8 </td> <td> pointer from String </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> - </td> <td> - </td> <td> pointer-utf16 </td> <td> pointer from Unicode </td> </tr>
-          <tr> <td> + </td> <td> - </td> <td> - </td> <td> - </td> <td> - </td> <td> pointer-byte </td> <td> pointer from ByteArray </td> </tr>
-          <tr> <td> + </td> <td> - </td> <td> - </td> <td> - </td> <td> - </td> <td> pointer-var </td>
+          <tr> <td> &cross; </td> <td> &check; </td> <td> &cross; </td> <td> &check; </td> <td> &cross; </td> <td> <code>void</code> </td> <td> void </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>char</code> </td> <td> char </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>signed&nbsp;char</code> </td> <td> signed char </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>unsigned&nbsp;char</code> </td> <td> unsigned char </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>int</code> </td> <td> int </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>unsigned</code> </td> <td> unsigned int </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>short</code> </td> <td> signed short int </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>unsigned&nbsp;short</code> </td> <td> unsigned short int </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>long</code> </td> <td> signed long int </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>unsigned&nbsp;long</code> </td> <td> unsigned long int </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>float</code> </td> <td> float </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>double</code> </td> <td> double </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>long&nbsp;long</code> </td> <td> long long </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>unsigned&nbsp;long&nbsp;long</code> </td> <td> unsigned long long </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>long&nbsp;double</code> </td> <td> long double </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>sint8</code> </td> <td> signed 8 bit int </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>uint8</code> </td> <td> unsigned 8 bit int </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>sint16</code> </td> <td> signed 16 bit int </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>uint16</code> </td> <td> unsigned 16 bit int </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>sint32</code> </td> <td> signed 32 bit int </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>uint32</code> </td> <td> unsigned 32 bit int </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>sint64</code> </td> <td> signed 64 bit int </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>uint64</code> </td> <td> unsigned 64 bit int </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> <code>pointer</code> </td> <td> pointer as an integer value </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &cross; </td> <td> <code>pointer-obj</code> </td> <td> pointer from Tcl_Obj </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &cross; </td> <td> &cross; </td> <td> <code>pointer-utf8</code> </td> <td> pointer from String </td> </tr>
+          <tr> <td> &check; </td> <td> &check; </td> <td> &check; </td> <td> &cross; </td> <td> &cross; </td> <td> <code>pointer-utf16</code> </td> <td> pointer from Unicode </td> </tr>
+          <tr> <td> &check; </td> <td> &cross; </td> <td> &cross; </td> <td> &cross; </td> <td> &cross; </td> <td> <code>pointer-byte</code> </td> <td> pointer from ByteArray </td> </tr>
+          <tr> <td> &check; </td> <td> &cross; </td> <td> &cross; </td> <td> &cross; </td> <td> &cross; </td> <td> <code>pointer-var</code> </td>
             <td>
               pointer from ByteArray stored in variable. If the ByteArray
               is shared, then an unshared copy is made and stored back into
               the variable.
             </td>
           </tr>
-          <tr> <td> + </td> <td> - </td> <td> - </td> <td> - </td> <td> - </td> <td> pointer-proc </td> <td> pointer to callback function constructed to call a Tcl proc. </td> </tr>
-          <tr> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> + </td> <td> struct </td> <td> structure aggregate </td> </tr>
+          <tr> <td> &cross; </td> <td> &cross; </td> <td> &cross; </td> <td> &cross; </td> <td> &cross; </td> <td> <code>pointer-proc</code> </td> <td> pointer to callback function constructed to call a Tcl proc. </td> </tr>
+          <tr> <td> &cross; </td> <td> &cross; </td> <td> &cross; </td> <td> &cross; </td> <td> &cross; </td> <td> <code>struct</code> </td> <td> structure aggregate </td> </tr>
         </table>
       </section>
       <section>
@@ -610,10 +682,10 @@ Hello libc!
         </p>
         <ul>
           <li>
-            <a href="https://github.com/prs-de/ffidl/tarball/0.8">ffidl-0.8b0.tar.gz</a>
+            <a href="https://github.com/prs-de/ffidl/tarball/0.9b0">ffidl-0.9b0.tar.gz</a>
           </li>
           <li>
-            <a href="https://github.com/prs-de/ffidl/zipball/0.8">ffidl-0.8b0.zip</a>
+            <a href="https://github.com/prs-de/ffidl/zipball/0.9b0">ffidl-0.9b0.zip</a>
           </li>
         </ul>
         <p>
@@ -628,8 +700,8 @@ Hello libc!
           Installation is like for any other TEA extension, minimally it
           consists of:
         </p>
-        <pre><code>tar xzvf ffidl-0.8.tar.gz
-cd ffidl-0.8
+        <pre><code>tar xzvf ffidl-0.9b0.tar.gz
+cd ffidl-0.9b0
 configure &amp;&amp; make &amp;&amp; make install</code></pre>
         <p>
           Custom configure options are implemented for selecting between libffi
@@ -650,32 +722,46 @@ configure &amp;&amp; make &amp;&amp; make install</code></pre>
           Ffidl's build system to its location:
         </p>
         <pre><code># Build libffi
-tar xzvf libffi-3.2.1.tar.gz
-cd libffi-3.2.1
-configure --prefix=/some/path &amp;&amp; make &amp;&amp; make install
+tar xzvf libffi-3.3.tar.gz
+cd libffi-3.3
+./configure --prefix=/some/path &amp;&amp; make &amp;&amp; make install
 cd ..
 # Build Ffidl
-tar xzvf ffidl-0.8.tar.gz
-cd ffidl-0.8
-configure PKG_CONFIG_PATH=/some/path/lib/pkgconfig &amp;&amp; make &amp;&amp; make install</code></pre>
+tar xzvf ffidl-0.9b0.tar.gz
+cd ffidl-0.9b0
+./configure PKG_CONFIG_PATH=/some/path/lib/pkgconfig &amp;&amp; make &amp;&amp; make install</code></pre>
         <h4>Building on Windows</h4>
         <p>
-          The recommended setup for building for Windows is using Cygwing and
+          The recommended setup for building for Windows is using Cygwin and
           MinGW.  Assuming Cygwin is properly installed, the following
           commands on a Cygwin terminal build Ffidl for Win64:
         </p>
         <pre><code>setup-x86_64.exe -q -P make,mingw64-x86_64-gcc-core,mingw64-x86_64-tcl,mingw64-x86_64-libffi
 # Build Ffidl
-tar xzvf ffidl-0.8.tar.gz
-cd ffidl-0.8
+tar xzvf ffidl-0.9b0.tar.gz
+cd ffidl-0.9b0
 ./configure \
-    CC=x86_64-w64-mingw32-gcc.exe \
-    CYGPATH='cygpath -m' \
     --enable-symbols \
     --with-tcl=/usr/x86_64-w64-mingw32/sys-root/mingw/lib \
     --prefix=/some/path \
     --exec-prefix=/some/path \
+    CC=x86_64-w64-mingw32-gcc.exe \
+    CYGPATH='cygpath -m' \
     PKG_CONFIG_PATH=/usr/x86_64-w64-mingw32/sys-root/mingw/lib/pkgconfig</code></pre>
+        <h5>Linking libffi statically</h5>
+        <p>
+          When wishing to link libffi statically under Windows, remember to add
+          the <code>FFI_BUILDING</code> definition (see libffi documentation for
+          details).  For example:
+          <pre><code>./configure \
+    --enable-symbols \
+    --with-tcl=/some/tcl/path \
+    --prefix=/some/path \
+    --exec-prefix=/some/path \
+    LIBFFI_LIBS=/some/libffi/path/libffi.lib \
+    LIBFFI_CFLAGS="-IT:/some/libffi/path/include -DFFI_BUILDING" \
+    CC=cl</code></pre>
+        </p>
         <h4>Additional notes</h4>
         <p>
           On non-Darwin Unix and on Windows you should edit
@@ -841,7 +927,7 @@ cd ffidl-0.8
           mapping for your own machine.
         </p>
         <p>
-          <b>ibrary/ffidlrt.tcl</b> also contains some examples of binding
+          <b>library/ffidlrt.tcl</b> also contains some examples of binding
           into the Tcl core itself.
         </p>
         <p>
@@ -1001,8 +1087,8 @@ cd ffidl-0.8
           <span id="warranty">No Warranty</span>
         </h2>
         <p>
-          Ffidl Version 0.8b0<br>
-          Copyright &copy; 2015-2018 Patzschke + Rasp Software GmbH,
+          Ffidl Version 0.9b0<br>
+          Copyright &copy; 2015-2021 Patzschke + Rasp Software GmbH,
           Wiesbaden;<br>
           Copyright &copy; 2005 by Daniel A. Steffen;<br>
           Copyright &copy; 1999 by Roger E Critchlow Jr, Santa Fe, NM, USA.
@@ -1047,7 +1133,7 @@ cd ffidl-0.8
           Medraño Calvo</a>
       </address><!-- Created: Sun Mar 14 22:54:17 MST 1999 -->
       <!-- hhmts start -->
-      Last modified: Mar 12 2018 <!-- hhmts end -->
+      Last modified: Jun 23 2020 <!-- hhmts end -->
       <address>
         <a href="http://www.elf.org">elf.org</a>
       </address>

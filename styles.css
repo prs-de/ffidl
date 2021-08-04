@@ -1948,11 +1948,12 @@ pre {
   border: 1px solid #c7c7c7;
   overflow: auto;
   overflow-y: hidden;
+  line-height: normal;
 }
 pre code {
-  font-family: "Lucida Sans", Monaco, Bitstream Vera Sans Mono, Lucida Console, Terminal;
+  font-family: Bitstream Vera Sans Mono, Lucida Console, Terminal, monospace;
   font-size: 13px;
-  color: #efefef;
+  color: white;
   text-shadow: 0px 1px 0px #000;
   margin: 0px;
   padding: 0px;
@@ -1963,12 +1964,11 @@ pre code {
 }
 
 code {
-  font-family: "Lucida Sans", Monaco, Bitstream Vera Sans Mono, Lucida Console, Terminal;
+  font-family: Bitstream Vera Sans Mono, Lucida Console, Terminal, monospace;
   font-size: 13px;
-  color: #efefef;
+  color: white;
   text-shadow: 0px 1px 0px #000;
-  margin: 0 4px;
-  padding: 2px 6px;
+  padding: 2px 2px;
   background: #333;
   -moz-border-radius: 2px;
   -webkit-border-radius: 2px;
@@ -1980,22 +1980,31 @@ table {
   border-collapse: collapse;
 }
 
+tr {
+  border: 1px solid #e5e5e5;
+}
 th {
   text-align: left;
   padding: 5px 10px;
-  border-bottom: 1px solid #e5e5e5;
+  border: 1px solid #e5e5e5;
   color: #444;
 }
 
 td {
   text-align: left;
   padding: 5px 10px;
-  border-bottom: 1px solid #e5e5e5;
   border-right: 1px solid #ffcc00;
 }
+
 td:first-child {
   border-left: 1px solid #ffcc00;
 }
+
+#typetable td:nth-child(1) { text-align: center; }
+#typetable td:nth-child(2) { text-align: center; }
+#typetable td:nth-child(3) { text-align: center; }
+#typetable td:nth-child(4) { text-align: center; }
+#typetable td:nth-child(5) { text-align: center; }
 
 hr {
   border: 0;
@@ -2009,6 +2018,11 @@ dt {
   color: #444;
   font-weight: 700;
   margin-top: 20px;
+}
+
+.warning {
+    outline: 10px dashed yellow;
+    box-shadow: 0 0 0 10px black;
 }
 
 #commands dt {
@@ -2036,6 +2050,12 @@ section ul li:before {
   position: relative;
   margin-right: 10px;
   color: #ffcc00;
+  font-weight: bold;
+}
+
+section ul li i {
+  color: goldenrod;
+  text-transform: uppercase;
   font-weight: bold;
 }
 
