@@ -19,7 +19,7 @@ dnl	to configure the system for the local environment.
 # so you can encode the package version directly into the source files.
 #-----------------------------------------------------------------------
 
-AC_INIT([Ffidl], [0.8])
+AC_INIT([Ffidl], [0.9b0])
 
 AC_PREREQ(2.59b)
 

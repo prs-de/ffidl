@@ -69,7 +69,7 @@
           function from Tcl code:
         </p>
         <pre><code>% package require Ffidl
-0.8
+0.9b0
 % ffidl::callout cputs {pointer-utf8} int [ffidl::symbol libc.so.6 puts]
 % cputs "Hello libc!"
 Hello libc!
@@ -100,7 +100,7 @@ Hello libc!
           libffi or libffcall support, and a libdl implementation.
         </p>
         <p>
-          Ffidl 0.8 is an alpha release. There are configuration details
+          Ffidl 0.9b0 is an alpha release. There are configuration details
           which you will need to attend to by hand in the current release.
           The initial development turned up a few bugs in libffi under
           linux-x86, so users on other architectures should be alert for
@@ -128,6 +128,27 @@ Hello libc!
       </section>
       <section>
         <h2 id="changelog">Changelog</h2>
+        <h3>Ffidl 0.9b0</h3>
+        <p>
+          Ffidl 0.9b0 has the following changes:
+        </p>
+        <ul>
+          <li><i>Feat</i> add NMake-based build system</li>
+	</ul>
+        <p>
+          The changes in Ffidl 0.9b0 were implemented by:
+	  <ul>
+            <li>
+              <a href="mailto:apnmbx-wits@yahoo.com">Ashok P. Nadkarni</a>
+            </li>
+            <li>
+              <a href="mailto:adrian@medranocalvo.com">Adrián Medraño Calvo</a>
+              for <a href="https://www.prs.de">Patzschke + Rasp Software GmbH</a>
+            </li>
+          </ul>
+          and are under BSD License; do not contact the original Ffidl author
+          for support about them.
+        </p>
         <h3>Ffidl 0.8</h3>
         <p>
           Ffidl 0.8 has the following changes:
@@ -141,7 +162,7 @@ Hello libc!
           value of <code>NULL</code> pointers for the architecture</li>
           <li><i>Feat</i> support specifying library binding time and symbol
           visibility</li>
-          <li><i>Feat</i> Documentation improvements</li>
+          <li><i>Feat</i> documentation improvements</li>
           <li><i>Fix</i> check protocol name on non-Windows platforms</li>
           <li><i>Fix</i> misuse of libffi's return value API</li>
           <li><i>Fix</i> double-free upon deleting interpreter</li>
@@ -661,10 +682,10 @@ Hello libc!
         </p>
         <ul>
           <li>
-            <a href="https://github.com/prs-de/ffidl/tarball/0.8">ffidl-0.8.tar.gz</a>
+            <a href="https://github.com/prs-de/ffidl/tarball/0.9b0">ffidl-0.9b0.tar.gz</a>
           </li>
           <li>
-            <a href="https://github.com/prs-de/ffidl/zipball/0.8">ffidl-0.8.zip</a>
+            <a href="https://github.com/prs-de/ffidl/zipball/0.9b0">ffidl-0.9b0.zip</a>
           </li>
         </ul>
         <p>
@@ -679,8 +700,8 @@ Hello libc!
           Installation is like for any other TEA extension, minimally it
           consists of:
         </p>
-        <pre><code>tar xzvf ffidl-0.8.tar.gz
-cd ffidl-0.8
+        <pre><code>tar xzvf ffidl-0.9b0.tar.gz
+cd ffidl-0.9b0
 configure &amp;&amp; make &amp;&amp; make install</code></pre>
         <p>
           Custom configure options are implemented for selecting between libffi
@@ -706,8 +727,8 @@ cd libffi-3.3
 ./configure --prefix=/some/path &amp;&amp; make &amp;&amp; make install
 cd ..
 # Build Ffidl
-tar xzvf ffidl-0.8.tar.gz
-cd ffidl-0.8
+tar xzvf ffidl-0.9b0.tar.gz
+cd ffidl-0.9b0
 ./configure PKG_CONFIG_PATH=/some/path/lib/pkgconfig &amp;&amp; make &amp;&amp; make install</code></pre>
         <h4>Building on Windows</h4>
         <p>
@@ -717,8 +738,8 @@ cd ffidl-0.8
         </p>
         <pre><code>setup-x86_64.exe -q -P make,mingw64-x86_64-gcc-core,mingw64-x86_64-tcl,mingw64-x86_64-libffi
 # Build Ffidl
-tar xzvf ffidl-0.8.tar.gz
-cd ffidl-0.8
+tar xzvf ffidl-0.9b0.tar.gz
+cd ffidl-0.9b0
 ./configure \
     --enable-symbols \
     --with-tcl=/usr/x86_64-w64-mingw32/sys-root/mingw/lib \
@@ -1066,8 +1087,8 @@ cd ffidl-0.8
           <span id="warranty">No Warranty</span>
         </h2>
         <p>
-          Ffidl Version 0.8<br>
-          Copyright &copy; 2015-2020 Patzschke + Rasp Software GmbH,
+          Ffidl Version 0.9b0<br>
+          Copyright &copy; 2015-2021 Patzschke + Rasp Software GmbH,
           Wiesbaden;<br>
           Copyright &copy; 2005 by Daniel A. Steffen;<br>
           Copyright &copy; 1999 by Roger E Critchlow Jr, Santa Fe, NM, USA.

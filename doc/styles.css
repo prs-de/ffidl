@@ -2053,6 +2053,12 @@ section ul li:before {
   font-weight: bold;
 }
 
+section ul li i {
+  color: goldenrod;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
 small {
   font-size: 12px;
 }
