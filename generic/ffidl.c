@@ -3105,7 +3105,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
       *(void **)callout->args[i] = (void *)Tcl_GetByteArrayFromObj(obj, &itmp);
       continue;
     case FFIDL_PTR_VAR:
-      obj = Tcl_ObjGetVar2(interp, objv[args_ix+i], NULL, TCL_LEAVE_ERR_MSG);
+      obj = Tcl_ObjGetVar2(interp, obj, NULL, TCL_LEAVE_ERR_MSG);
       if (obj == NULL) return TCL_ERROR;
       if (obj->typePtr != ffidl_bytearray_ObjType) {
 	sprintf(buff, "parameter %d must be a binary string", i);
@@ -3113,7 +3113,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
 	goto cleanup;
       }
       if (Tcl_IsShared(obj)) {
-	obj = Tcl_ObjSetVar2(interp, objv[args_ix+i], NULL, Tcl_DuplicateObj(obj), TCL_LEAVE_ERR_MSG);
+	obj = Tcl_ObjSetVar2(interp, obj, NULL, Tcl_DuplicateObj(obj), TCL_LEAVE_ERR_MSG);
 	if (obj == NULL) {
 	  goto cleanup;
 	}
@@ -3127,7 +3127,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
       ffidl_callback *callback;
       ffidl_closure *closure;
       Tcl_DString ds;
-      char *name = Tcl_GetString(objv[args_ix+i]);
+      char *name = Tcl_GetString(obj);
       Tcl_DStringInit(&ds);
       if (!strstr(name, "::")) {
         Tcl_Namespace *ns;
@@ -3142,7 +3142,7 @@ static int tcl_ffidl_call(ClientData clientData, Tcl_Interp *interp, int objc, T
       callback = callback_lookup(callout->client, name);
       Tcl_DStringFree(&ds);
       if (callback == NULL) {
-	Tcl_AppendResult(interp, "no callback named \"", Tcl_GetString(objv[args_ix+i]), "\" is defined", NULL);
+	Tcl_AppendResult(interp, "no callback named \"", Tcl_GetString(obj), "\" is defined", NULL);
 	goto cleanup;
       }
       closure = &(callback->closure);
