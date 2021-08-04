@@ -727,6 +727,20 @@ cd ffidl-0.8
     CC=x86_64-w64-mingw32-gcc.exe \
     CYGPATH='cygpath -m' \
     PKG_CONFIG_PATH=/usr/x86_64-w64-mingw32/sys-root/mingw/lib/pkgconfig</code></pre>
+        <h5>Linking libffi statically</h5>
+        <p>
+          When wishing to link libffi statically under Windows, remember to add
+          the <code>FFI_BUILDING</code> definition (see libffi documentation for
+          details).  For example:
+          <pre><code>./configure \
+    --enable-symbols \
+    --with-tcl=/some/tcl/path \
+    --prefix=/some/path \
+    --exec-prefix=/some/path \
+    LIBFFI_LIBS=/some/libffi/path/libffi.lib \
+    LIBFFI_CFLAGS="-IT:/some/libffi/path/include -DFFI_BUILDING" \
+    CC=cl</code></pre>
+        </p>
         <h4>Additional notes</h4>
         <p>
           On non-Darwin Unix and on Windows you should edit
