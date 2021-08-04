@@ -135,8 +135,9 @@ static void *tkStubsPtr, *tkPlatStubsPtr, *tkIntStubsPtr, *tkIntPlatStubsPtr, *t
  */
 #include <ffi.h>
 
+#ifndef USE_LIBFFI_RAW_API
 #define USE_LIBFFI_RAW_API FFI_NATIVE_RAW_API
-
+#endif
 
 #ifndef FFI_CLOSURES
 #define HAVE_CLOSURES 0
@@ -2018,7 +2019,7 @@ static void callout_call(ffidl_callout *callout)
   else
     ffi_call(&cif->lib_cif, callout->fn, callout->ret, callout->args);
 #else
-  ffi_call(&cif->lib_cif, callout->fn, callout->ret, callout->args);
+  ffi_call(&cif->lib_cif, FFI_FN(callout->fn), callout->ret, callout->args);
 #endif
 #elif USE_LIBFFCALL
   av_alist alist;

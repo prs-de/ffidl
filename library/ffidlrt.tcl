@@ -26,7 +26,7 @@ proc ::ffidl::find-pkg-lib {pkg} {
 
 namespace eval ::ffidl:: {
     set ffidl_lib [find-pkg-lib Ffidl]
-    array set libs [list ffidl $ffidl_lib ffidl_test $ffidl_lib]
+    array set libs [list ffidl [list $ffidl_lib] ffidl_test [list $ffidl_lib]]
     unset ffidl_lib
     
     # 'libs' array is used by the ::ffidl::find-lib
