@@ -139,11 +139,13 @@ static void *tkStubsPtr, *tkPlatStubsPtr, *tkIntStubsPtr, *tkIntPlatStubsPtr, *t
 #define USE_LIBFFI_RAW_API FFI_NATIVE_RAW_API
 #endif
 
+#ifndef HAVE_CLOSURES
 #ifndef FFI_CLOSURES
 #define HAVE_CLOSURES 0
-#else
+#else /* FFI_CLOSURES */
 #define HAVE_CLOSURES FFI_CLOSURES
-#endif
+#endif /* FFI_CLOSURES */
+#endif /* HAVE_CLOSURES */
 
 #if defined(HAVE_LONG_DOUBLE) && defined(HAVE_LONG_DOUBLE_WIDER)
 /*
@@ -902,7 +904,7 @@ struct ffidl_callback {
   Tcl_Obj **cmdv;		/* Command prefix Tcl_Objs. */
   Tcl_Interp *interp;
   ffidl_closure closure;
-#if USE_LIBFFI_RAW_API
+#if USE_LIBFFI && USE_LIBFFI_RAW_API
   int use_raw_api;		/* Whether to use libffi's raw API. */
   ptrdiff_t *offsets;		/* Raw argument offsets. */
 #endif
@@ -2017,7 +2019,7 @@ static void callout_call(ffidl_callout *callout)
   if (callout->use_raw_api)
     ffi_raw_call(&cif->lib_cif, callout->fn, callout->ret, (ffi_raw *)callout->args[0]);
   else
-    ffi_call(&cif->lib_cif, callout->fn, callout->ret, callout->args);
+    ffi_call(&cif->lib_cif, FFI_FN(callout->fn), callout->ret, callout->args);
 #else
   ffi_call(&cif->lib_cif, FFI_FN(callout->fn), callout->ret, callout->args);
 #endif
@@ -2220,7 +2222,7 @@ static void callback_delete(ffidl_client *client, ffidl_callback *callback)
 */
 #if USE_LIBFFI
 /* call a tcl proc from a libffi closure */
-static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *user_data)
+static void callback_callback(ffi_cif *fficif, void *ret, ffi_raw *args, void *user_data)
 {
   ffidl_callback *callback = (ffidl_callback *)user_data;
   Tcl_Interp *interp = callback->interp;
@@ -2243,10 +2245,10 @@ static void callback_callback(ffi_cif *fficif, void *ret, void **args, void *use
       ptrdiff_t offset = callback->offsets[i] - callback->offsets[0];
       argp = (void *)(((char *)args)+offset);
     } else {
-      argp = args[i];
+      argp = args[i].ptr;
     }
 #else
-    argp = args[i];
+    argp = args[i].ptr;
 #endif
     switch (cif->atypes[i]->typecode) {
     case FFIDL_INT:
@@ -3439,9 +3441,9 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
   callback->offsets = (ptrdiff_t *)(callback->cmdv+cmdc+cif->argc);
   callback->use_raw_api = cif_raw_supported(cif);
   if (callback->use_raw_api &&
-      ffi_prep_raw_closure_loc((ffi_raw_closure *)closure->lib_closure, &callback->cif->lib_cif,
-				 (void (*)(ffi_cif*,void*,ffi_raw*,void*))callback_callback,
-                                 (void *)callback, closure->executable) == FFI_OK) {
+      ffi_prep_raw_closure_loc((ffi_raw_closure *)closure->lib_closure,
+			       &callback->cif->lib_cif, callback_callback,
+			       (void *)callback, closure->executable) == FFI_OK) {
     if (TCL_OK != cif_raw_prep_offsets(callback->cif, callback->offsets)) {
       goto error;
     }
@@ -3470,7 +3472,7 @@ static int tcl_ffidl_callback(ClientData clientData, Tcl_Interp *interp, int obj
 
   /* Return function pointer to the callback. */
 #if USE_LIBFFI
-  fn = (void (*)())closure->executable;
+  fn = FFI_FN(closure->executable);
 #elif USE_LIBFFCALL
   fn = (void (*)())closure->lib_closure;
 #endif
