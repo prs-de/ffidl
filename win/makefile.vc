@@ -1,11 +1,18 @@
 #------------------------------------------------------------- -*- makefile -*-
 #
-# Makefile for tcludp
+# Makefile for ffidl
 #
 # Basic build, test and install
 #   nmake /f makefile.vc INSTALLDIR=c:\tcl
 #   nmake /f makefile.vc INSTALLDIR=c:\tcl test
 #   nmake /f makefile.vc INSTALLDIR=c:\tcl install
+#
+# It is expected that the include and lib directories are at
+# $(LIBFFIDIR)/$(ARCH)/{include,lib} or $(LIBFFIDIR)/{include,lib}
+# where ARCH is IX86 or AMD64.
+# If LIBFFIDIR is not passed in environment or command line, an attempt is made
+# to locate it in the following locations:
+# .., ../.., ../../.. using presence of libffi.lib as the key.
 #
 # For other build options (debug, static etc.),
 # See TIP 477 (https://core.tcl.tk/tips/doc/trunk/tip/477.md) for
@@ -63,6 +70,9 @@ LIBFFIDIR=$(LIBFFIPARENT)\libffi\$(ARCH)
 !endif
 
 PRJ_DEFINES = -D_CRT_SECURE_NO_WARNINGS -DUSE_LIBFFI=1 -DUSE_LIBFFI_RAW_API=0 -sdl
+# Add FFI_BUILDING since we always link libffi statically. See comments in ffi.h
+PRJ_DEFINES = $(PRJ_DEFINES) -DFFI_BUILDING
+
 PRJ_INCLUDES = $(PRJ_INCLUDES) -I"$(LIBFFIDIR)\include"
 PRJ_LIBS = $(PRJ_LIBS) "$(LIBFFIDIR)\lib\libffi.lib"
 
@@ -70,14 +80,18 @@ PRJ_LIBS = $(PRJ_LIBS) "$(LIBFFIDIR)\lib\libffi.lib"
 
 install: default-install-docs-html
 
-!if [echo FFIDLRTVER = \> nmakehlp.out] \
+!if [echo FFIDLRT_VERSION = \> nmakehlp.out] \
     || [nmakehlp -V "$(LIBDIR)\ffidlrt.tcl" "package provide" >> nmakehlp.out]
 !error "Could not determine ffidlrt.tcl version."
 !endif
 !include nmakehlp.out
-pkgindex: default-pkgindex
-	@$(TCLSH) << >>$(OUT_DIR)\pkgIndex.tcl
-puts {package ifneeded Ffidlrt $(FFIDLRTVER) [list source [file join $$dir ffidlrt.tcl]]}
+pkgindex:
+	nmakehlp -s << $(ROOT)\pkgIndex.tcl.in > $(OUT_DIR)\pkgIndex.tcl
+@PACKAGE_VERSION@    $(DOTVERSION)
+@PACKAGE_NAME@       $(PRJ_PACKAGE_TCLNAME)
+@PACKAGE_TCLNAME@    $(PRJ_PACKAGE_TCLNAME)
+@PKG_LIB_FILE@       $(PRJLIBNAME)
+@FFIDLRT_VERSION@    $(FFIDLRT_VERSION)
 <<
 
 
