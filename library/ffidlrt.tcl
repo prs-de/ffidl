@@ -204,16 +204,14 @@ namespace eval ::ffidl:: {
 # currently wired for my linux box
 #
 proc ::ffidl::find-lib {root} {
-    upvar \#0 ::ffidl::libs libs
+    variable libs
     if { ! [::info exists libs($root)] || [llength libs($root)] == 0} {
 	error "::ffidl::find-lib $root - no mapping defined for $root"
     }
-    if {[llength $libs($root)] > 1} {
-	foreach l $libs($root) {
-	    if {[file exists $l]} {
-		set libs($root) $l
-		break
-	    }
+    foreach l $libs($root) {
+	if {[file exists $l]} {
+	    set libs($root) [list $l]
+	    break
 	}
     }
     lindex $libs($root) 0
