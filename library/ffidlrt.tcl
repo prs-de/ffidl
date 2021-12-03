@@ -42,11 +42,8 @@ namespace eval ::ffidl:: {
 	    switch -glob $tcl_platform(os) {
                 Darwin {
                     array set libs {
-                        c System.framework/System
-                        m System.framework/System
-                        gdbm {}
-                        gmp {}
-                        mathswig libmathswig0.5.dylib
+                        c {System.framework/System}
+                        m {System.framework/System}
                     }
                     array set types {
                         size_t {{unsigned long}}
@@ -57,71 +54,40 @@ namespace eval ::ffidl:: {
                 }
                 Linux {
                     if {$tcl_platform(wordSize) == 8} {
-                        if {$tcl_platform(machine) eq "alpha"} {
-                            array set libs {
-                                c /lib/libc.so.6.1
-                                m /lib/libm.so.6.1
-                                gdbm /usr/lib/libgdbm.so
-                                gmp {/usr/local/lib/libgmp.so /usr/lib/libgmp.so.2}
-                                mathswig libmathswig0.5.so
-                            }
-                            array set types {
-                                size_t long
-                                clock_t long
-                                time_t long
-                                timeval {time_t time_t}
-                            }                        
-                        } else {
-                            array set libs {
-                                c {
-				    /lib64/libc.so.6
-				    /lib/x86_64-linux-gnu/libc.so.6
-				}
-                                m {
-				    /lib64/libm.so.6
-				    /lib/x86_64-linux-gnu/libm.so.6
-				}
-                                gdbm {
-				    /usr/lib64/libgdbm.so
-				    /usr/lib/x86_64-linux-gnu/libgdbm.so
-				}
-                                gmp {
-				    /usr/lib/x86_64-linux-gnu/libgmp.so
-				    /usr/local/lib64/libgmp.so
-				    /usr/lib64/libgmp.so.2
-				}
-                                mathswig libmathswig0.5.so
-                            }
-                            array set types {
-                                size_t long
-                                clock_t long
-                                time_t long
-                                timeval {time_t time_t}
-                            }
-                        }
-                    } else {
-                        array set libs {
-                            c {
-                                    /lib/libc.so.6
-                                    /lib/i386-linux-gnu/libc.so.6
-                            }
-                            m {
-                                    /lib/libm.so.6
-                                    /lib/i386-linux-gnu/libm.so.6
-                            }
-                            gdbm {
-                                    /usr/lib/libgdbm.so
-                                    /usr/lib/i386-linux-gnu/libgdbm.so.3
-                            }
-                            gmp {
-                                   /usr/lib/i386-linux-gnu/libgmp.so.2
-                                   /usr/local/lib/libgmp.so
-                                   /usr/lib/libgmp.so.2
-                            }
-                            mathswig libmathswig0.5.so
-                        }
-                        array set types {
-                            size_t int
+			array set libs {
+			    c {
+				libc.so.6
+				/lib64/libc.so.6
+				/lib/x86_64-linux-gnu/libc.so.6
+			    }
+			    m {
+				libm.so.6
+				/lib64/libm.so.6
+				/lib/x86_64-linux-gnu/libm.so.6
+			    }
+			}
+			array set types {
+			    size_t long
+			    clock_t long
+			    time_t long
+			    timeval {time_t time_t}
+			}
+
+		    } else {
+			array set libs {
+			    c {
+				libc.so.6
+				/lib/libc.so.6
+				/lib/i386-linux-gnu/libc.so.6
+			    }
+			    m {
+				libm.so.6
+				/lib/libm.so.6
+				/lib/i386-linux-gnu/libm.so.6
+			    }
+			}
+			array set types {
+			    size_t int
                             clock_t long
                             time_t long
                             timeval {time_t time_t}
@@ -130,11 +96,8 @@ namespace eval ::ffidl:: {
                 }
                 *BSD {
                     array set libs {
-                        c {/usr/lib/libc.so /usr/lib/libc.so.30.1}
-                        m {/usr/lib/libm.so /usr/lib/libm.so.1.0}
-                        gdbm libgdbm.so
-                        gmp libgmp.so
-                        mathswig libmathswig0.5.so
+                        c {libc.so /usr/lib/libc.so}
+                        m {libm.so /usr/lib/libm.so}
                     }
                     array set types {
                         size_t int
@@ -145,11 +108,8 @@ namespace eval ::ffidl:: {
                 }
                 default {
                     array set libs {
-                        c /lib/libc.so
-                        m /lib/libm.so
-                        gdbm libgdbm.so
-                        gmp libgmp.so
-                        mathswig libmathswig0.5.so
+                        c {libc.so /lib/libc.so}
+                        m {libm.so /lib/libm.so}
                     }
                     array set types {
                         size_t int
@@ -171,9 +131,6 @@ namespace eval ::ffidl:: {
 	    array set libs {
 		c msvcrt.dll
 		m msvcrt.dll
-		gdbm {}
-		gmp gmp202.dll
-		mathswig mathswig05.dll
 	    }
             #
             # found types
