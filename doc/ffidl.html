@@ -69,7 +69,7 @@
           function from Tcl code:
         </p>
         <pre><code>% package require Ffidl
-0.9b0
+0.9
 % ffidl::callout cputs {pointer-utf8} int [ffidl::symbol libc.so.6 puts]
 % cputs "Hello libc!"
 Hello libc!
@@ -100,7 +100,7 @@ Hello libc!
           libffi or libffcall support, and a libdl implementation.
         </p>
         <p>
-          Ffidl 0.9b0 is an alpha release. There are configuration details
+          Ffidl 0.9 is an alpha release. There are configuration details
           which you will need to attend to by hand in the current release.
           The initial development turned up a few bugs in libffi under
           linux-x86, so users on other architectures should be alert for
@@ -128,15 +128,15 @@ Hello libc!
       </section>
       <section>
         <h2 id="changelog">Changelog</h2>
-        <h3>Ffidl 0.9b0</h3>
+        <h3>Ffidl 0.9</h3>
         <p>
-          Ffidl 0.9b0 has the following changes:
+          Ffidl 0.9 has the following changes:
         </p>
         <ul>
           <li><i>Feat</i> add NMake-based build system</li>
 	</ul>
         <p>
-          The changes in Ffidl 0.9b0 were implemented by:
+          The changes in Ffidl 0.9 were implemented by:
 	  <ul>
             <li>
               <a href="mailto:apnmbx-wits@yahoo.com">Ashok P. Nadkarni</a>
@@ -682,10 +682,10 @@ Hello libc!
         </p>
         <ul>
           <li>
-            <a href="https://github.com/prs-de/ffidl/tarball/0.9b0">ffidl-0.9b0.tar.gz</a>
+            <a href="https://github.com/prs-de/ffidl/tarball/0.9">ffidl-0.9.tar.gz</a>
           </li>
           <li>
-            <a href="https://github.com/prs-de/ffidl/zipball/0.9b0">ffidl-0.9b0.zip</a>
+            <a href="https://github.com/prs-de/ffidl/zipball/0.9">ffidl-0.9.zip</a>
           </li>
         </ul>
         <p>
@@ -700,8 +700,8 @@ Hello libc!
           Installation is like for any other TEA extension, minimally it
           consists of:
         </p>
-        <pre><code>tar xzvf ffidl-0.9b0.tar.gz
-cd ffidl-0.9b0
+        <pre><code>tar xzvf ffidl-0.9.tar.gz
+cd ffidl-0.9
 configure &amp;&amp; make &amp;&amp; make install</code></pre>
         <p>
           Custom configure options are implemented for selecting between libffi
@@ -727,8 +727,8 @@ cd libffi-3.3
 ./configure --prefix=/some/path &amp;&amp; make &amp;&amp; make install
 cd ..
 # Build Ffidl
-tar xzvf ffidl-0.9b0.tar.gz
-cd ffidl-0.9b0
+tar xzvf ffidl-0.9.tar.gz
+cd ffidl-0.9
 ./configure PKG_CONFIG_PATH=/some/path/lib/pkgconfig &amp;&amp; make &amp;&amp; make install</code></pre>
         <h4>Building on Windows</h4>
         <p>
@@ -738,8 +738,8 @@ cd ffidl-0.9b0
         </p>
         <pre><code>setup-x86_64.exe -q -P make,mingw64-x86_64-gcc-core,mingw64-x86_64-tcl,mingw64-x86_64-libffi
 # Build Ffidl
-tar xzvf ffidl-0.9b0.tar.gz
-cd ffidl-0.9b0
+tar xzvf ffidl-0.9.tar.gz
+cd ffidl-0.9
 ./configure \
     --enable-symbols \
     --with-tcl=/usr/x86_64-w64-mingw32/sys-root/mingw/lib \
@@ -1087,7 +1087,7 @@ cd ffidl-0.9b0
           <span id="warranty">No Warranty</span>
         </h2>
         <p>
-          Ffidl Version 0.9b0<br>
+          Ffidl Version 0.9<br>
           Copyright &copy; 2015-2021 Patzschke + Rasp Software GmbH,
           Wiesbaden;<br>
           Copyright &copy; 2005 by Daniel A. Steffen;<br>
@@ -1133,7 +1133,7 @@ cd ffidl-0.9b0
           Medraño Calvo</a>
       </address><!-- Created: Sun Mar 14 22:54:17 MST 1999 -->
       <!-- hhmts start -->
-      Last modified: Jun 23 2020 <!-- hhmts end -->
+      Last modified: Dec 12 2021 <!-- hhmts end -->
       <address>
         <a href="http://www.elf.org">elf.org</a>
       </address>

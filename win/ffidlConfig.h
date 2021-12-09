@@ -207,7 +207,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-/* #define PACKAGE_VERSION "0.9b0" - defined by nmake build system */
+/* #define PACKAGE_VERSION "0.9" - defined by nmake build system */
 
 /* Define to the full name and version of this package. */
 #define PACKAGE_STRING PACKAGE_NAME " " PACKAGE_VERSION

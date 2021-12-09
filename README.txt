@@ -7,7 +7,7 @@ Changes since ffidl 0.5 are under BSD License and are
     Copyright (c) 2005, Daniel A. Steffen <das@users.sourceforge.net>
 
 Changes since ffidl 0.6 are under BSD License and are
-    Copyright (c) 2015-2020, Patzschke + Rasp Software GmbH, Wiesbaden
+    Copyright (c) 2015-2021, Patzschke + Rasp Software GmbH, Wiesbaden
 
 ------------------------------------------------------------------------
 

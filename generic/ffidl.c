@@ -64,7 +64,7 @@
  *  - Disable long double support if longer than double
  *  - ... see doc/ffidl.html
  * These changes are under BSD License and are
- * Copyright (c) 2020, Patzschke + Rasp Software GmbH, Wiesbaden
+ * Copyright (c) 2015-2021, Patzschke + Rasp Software GmbH, Wiesbaden
  * Author: Adrián Medraño Calvo <amcalvo@prs.de>
  */
 
