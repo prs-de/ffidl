@@ -4,8 +4,6 @@
  * Unlike the TEA based builds, this file is NOT automatically generated.
  * It is intended to be used only with the nmake builds with VC++
  * (tested with VS 2017, earlier releases may or may not work).
- * It was created by specifying the VC compiler for a TEA build and
- * manually fixing incorrect settings.
  *
  * This file is includable by both x86 and x64 builds.
  */
@@ -44,6 +42,9 @@
 #define ALIGNOF_VOID_P 4
 #endif
 
+/* Build windows export dll */
+/* #define BUILD_Ffidl 1 - not needed - already defined by nmake build system */
+
 /* Canonical host name */
 #ifdef _WIN64
 #define CANONICAL_HOST "x86_64-pc-cl"
@@ -57,6 +58,45 @@
 /* Defined when compiler supports casting to union type. */
 /* #undef HAVE_CAST_TO_UNION */
 
+#ifdef _WIN64
+
+/* libffi supports FFI_WIN64 on this platform. */
+#define HAVE_FFI_WIN64 /**/
+
+#else /*  ! _WIN64 */
+
+/* libffi supports FFI_FASTCALL on this platform. */
+#define HAVE_FFI_FASTCALL /**/
+
+/* libffi supports FFI_MS_CDECL on this platform. */
+#define HAVE_FFI_MS_CDECL /**/
+
+/* libffi supports FFI_STDCALL on this platform. */
+#define HAVE_FFI_STDCALL /**/
+
+/* libffi supports FFI_THISCALL on this platform. */
+#define HAVE_FFI_THISCALL /**/
+
+#endif /* _WIN64 */
+
+/* libffi supports FFI_EFI64 on this platform. */
+/* #undef HAVE_FFI_EFI64 */
+
+/* libffi supports FFI_GNUW64 on this platform. */
+/* #undef HAVE_FFI_GNUW64 - Visual C++ does not support 128 bit long double */
+
+/* libffi supports FFI_REGISTER on this platform. */
+/* #undef HAVE_FFI_REGISTER */
+
+/* libffi supports FFI_SYSV on this platform. */
+/* #undef HAVE_FFI_SYSV */
+
+/* libffi supports FFI_UNIX64 on this platform. */
+/* #undef HAVE_FFI_UNIX64 */
+
+/* libffi supports FFI_PASCAL on this platform. */
+/* #undef HAVE_FFI_PASCAL */
+
 /* Compiler support for module scope symbols */
 /* #undef HAVE_HIDDEN */
 
@@ -67,7 +107,7 @@
 /* #undef HAVE_LIMITS_H */
 
 /* Define to 1 if the system has the type `long double'. */
-/*  #undef HAVE_LONG_DOUBLE */
+#define HAVE_LONG_DOUBLE 1
 
 /* Define to 1 if the type `long double' works and has more range or precision
    than `double'. */
@@ -154,6 +194,24 @@
 /* Do we have <values.h>? */
 /* #undef NO_VALUES_H */
 
+/* Define to the address where bug reports for this package should be sent. */
+#define PACKAGE_BUGREPORT ""
+
+/* Define to the full name of this package. */
+/* #define PACKAGE_NAME "Ffidl" - defined by nmake build system */
+
+/* Define to the one symbol short name of this package. */
+#define PACKAGE_TARNAME "ffidl"
+
+/* Define to the home page for this package. */
+#define PACKAGE_URL ""
+
+/* Define to the version of this package. */
+/* #define PACKAGE_VERSION "0.9b0" - defined by nmake build system */
+
+/* Define to the full name and version of this package. */
+#define PACKAGE_STRING PACKAGE_NAME " " PACKAGE_VERSION
+
 /* The size of `char', as computed by sizeof. */
 #define SIZEOF_CHAR 1
 
@@ -185,16 +243,17 @@
 #define SIZEOF_VOID_P 4
 #endif
 
+/* This a static build */
+/* #undef STATIC_BUILD - automatically defined by nmake build system */
+
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
-/*
- * Following symbols all defined (or not) via makefile
- *  TCL_MEM_DEBUG
- *  TCL_THREADS
- *  USE_TCL_STUBS
- *  USE_THREAD_ALLOC
- */
+/* Is memory debugging enabled? */
+/* #undef TCL_MEM_DEBUG - defined by nmake build system */
+
+/* Are we building with threads enabled? */
+/* #define TCL_THREADS 1 - defined by nmake build system */
 
 /* Are wide integers to be implemented with C 'long's? */
 /* #undef TCL_WIDE_INT_IS_LONG */
@@ -222,6 +281,12 @@
 
 /* Use Tcl_LoadFile() API to load code */
 #define USE_TCL_LOADFILE 1
+
+/* Use Tcl stubs */
+/* #define USE_TCL_STUBS 1 - defined by nmake build system */
+
+/* Do we want to use the threaded memory allocator? */
+/* #undef USE_THREAD_ALLOC - defined by nmake build system */
 
 /* Use Tk stubs */
 /* #undef USE_TK_STUBS */
@@ -264,6 +329,12 @@
 
 /* Do we want to use the XOPEN network library? */
 /* #undef _XOPEN_SOURCE_EXTENDED */
+
+/* Define to `__inline__' or `__inline' if that's what the C compiler
+   calls it, or to nothing if 'inline' is not supported under any name.  */
+#ifndef __cplusplus
+#define inline __inline
+#endif
 
 /* Define to 1 if type `char' is unsigned and you are not using gcc.  */
 #ifndef __CHAR_UNSIGNED__
